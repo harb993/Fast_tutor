@@ -533,7 +533,7 @@
                 <li class="pipe-item" id="pLLM">
                     <div class="p-dot"></div>
                     <div class="p-info">
-                        <div class="p-name">LLM - Qwen 3.5-2B</div>
+                        <div class="p-name">LLM - Qwen 3.5-0.5B</div>
                         <div class="p-detail" id="dLLM">Idle</div>
                     </div>
                     <div class="p-time" id="tLLM">--</div>
@@ -730,7 +730,7 @@
 
         // LLM
         pSet('LLM', 'active', 'POST localhost:8080/v1/chat/completions');
-        log(`max_tokens=40, stream=false`, 'info', 'llm');
+        log(`Request: stream=false, max_tokens=40, model=Qwen3.5-0.5B`, 'info', 'llm');
 
         try {
             const res = await fetch('http://localhost:8080/v1/chat/completions', {

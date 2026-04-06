@@ -22,7 +22,7 @@ echo "Starting LLM Server (llama.cpp on port 8080)..."
 if [ "$USE_GPU" = "1" ]; then
     echo "  -> GPU mode enabled (NVIDIA CUDA, full offload)"
     ./llama-server \
-        -m qwen3.5-2b-instruct-q4_k_m.gguf \
+        -m qwen3.5-0.5b-instruct-q4_k_m.gguf \
         --port 8080 \
         -c 2048 \
         --threads 4 \
@@ -30,7 +30,7 @@ if [ "$USE_GPU" = "1" ]; then
 else
     echo "  -> CPU mode"
     ./llama-server \
-        -m qwen3.5-2b-instruct-q4_k_m.gguf \
+        -m qwen3.5-0.5b-instruct-q4_k_m.gguf \
         --port 8080 \
         -c 2048 \
         --threads 4 &

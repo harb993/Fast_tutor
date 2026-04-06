@@ -17,10 +17,10 @@ Offline, voice-powered math tutor for kids. Three AI models run as HTTP microser
          v                      v                      v
 +--------+--------+    +--------+--------+    +--------+--------+
 | STT              |    | LLM              |    | TTS              |
-| Moonshine Tiny   |    | Qwen 3.5-2B      |    | Pocket-TTS       |
+| Moonshine Tiny   |    | Qwen 3.5-0.5B    |    | Pocket-TTS       |
 | (in-process)     |    | llama.cpp server  |    | uvx serve        |
 | moonshine-onnx   |    | port 8080         |    | port 8000        |
-| ~26 MB           |    | ~1.5 GB (Q4)     |    | CPU only         |
+| ~26 MB           |    | ~400 MB (Q4)     |    | CPU only         |
 +------------------+    +------------------+    +------------------+
 ```
 
@@ -48,7 +48,7 @@ User speaks into mic
         |  messages[]
         v
 +-------+--------+
-|  Qwen 3.5-2B   |  ~50-300ms to first token
+|  Qwen 3.5-0.5B |  ~50-300ms to first token
 |  llama.cpp SSE  |  streams tokens via Server-Sent Events
 +-------+--------+
         |  sentence boundary detected (. ? !)
@@ -78,11 +78,11 @@ Speech-to-text. Runs inside the Python orchestrator process via ONNX Runtime.
 - Latency: ~80-150ms per utterance
 - Install: `pip install moonshine-onnx` (downloads model automatically on first use)
 
-### 2. Qwen 3.5-2B Instruct (LLM)
+### 2. Qwen 3.5-0.5B Instruct (LLM)
 
 Language model for generating tutor responses. Runs as an HTTP server via llama.cpp.
 
-- Size: ~1.5 GB (Q4_K_M quantization)
+- Size: ~400 MB (Q4_K_M quantization)
 - Runs on: CPU or GPU (CUDA/Vulkan)
 - Latency: ~50-100ms first token (GPU), ~200-500ms (CPU)
 
@@ -91,13 +91,13 @@ Language model for generating tutor responses. Runs as an HTTP server via llama.
 ```bash
 # Option A: Using huggingface-cli
 pip install huggingface-hub
-huggingface-cli download Qwen/Qwen3.5-2B-Instruct-GGUF \
-  qwen3.5-2b-instruct-q4_k_m.gguf \
+huggingface-cli download Qwen/Qwen3.5-0.5B-Instruct-GGUF \
+  qwen3.5-0.5b-instruct-q4_k_m.gguf \
   --local-dir .
 
 # Option B: Direct download
-# Go to https://huggingface.co/Qwen/Qwen3.5-2B-Instruct-GGUF
-# Download qwen3.5-2b-instruct-q4_k_m.gguf and place in project root
+# Go to https://huggingface.co/Qwen/Qwen3.5-0.5B-Instruct-GGUF
+# Download qwen3.5-0.5b-instruct-q4_k_m.gguf and place in project root
 ```
 
 **Build llama.cpp:**
@@ -171,8 +171,8 @@ cp build/bin/llama-server ../
 cd ..
 
 # 5. Download the LLM model
-huggingface-cli download Qwen/Qwen3.5-2B-Instruct-GGUF \
-  qwen3.5-2b-instruct-q4_k_m.gguf --local-dir .
+huggingface-cli download Qwen/Qwen3.5-0.5B-Instruct-GGUF \
+  qwen3.5-0.5b-instruct-q4_k_m.gguf --local-dir .
 ```
 
 ## Running
@@ -200,7 +200,7 @@ This starts all three services:
 
 ```
 Terminal 1: uvx pocket-tts serve --voice "hf://kyutai/tts-voices/jessica-jian/casual.wav"
-Terminal 2: ./llama-server -m qwen3.5-2b-instruct-q4_k_m.gguf --port 8080 -c 2048 --threads 4
+Terminal 2: ./llama-server -m qwen3.5-0.5b-instruct-q4_k_m.gguf --port 8080 -c 2048 --threads 4
 Terminal 3: python orchestrator.py
 ```
 
