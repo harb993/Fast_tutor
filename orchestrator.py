@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger("orchestrator")
 
 # Pipeline Configuration
-OLLAMA_SERVER = "http://localhost:8080/v1/chat/completions"
+OLLAMA_SERVER = "http://localhost:11434/v1/chat/completions"
 TTS_SERVER = "http://localhost:8000/generate"
 
 # Audio Settings
@@ -76,9 +76,9 @@ async def process_llm_and_speak(transcript: str, page_state: dict):
     sentence_buffer = ""
     try:
         async with httpx.AsyncClient() as client:
-            # stream=True gets server-sent events back from llama-server or any OpenAI compatible endpoint
+            # stream=True gets server-sent events back from Ollama OpenAI compatible endpoint
             async with client.stream("POST", OLLAMA_SERVER, 
-                                     json={"messages": prompt, "stream": True, "temperature": 0.6, "max_tokens": 100}) as r:
+                                     json={"model": "qwen2.5:0.5b", "messages": prompt, "stream": True, "temperature": 0.6, "max_tokens": 100}) as r:
                 
                 async for chunk in r.aiter_lines():
                     if chunk.startswith("data: "):

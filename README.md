@@ -17,9 +17,9 @@ Offline, voice-powered math tutor for kids. Three AI models run as HTTP microser
          v                      v                      v
 +--------+--------+    +--------+--------+    +--------+--------+
 | STT              |    | LLM              |    | TTS              |
-| Moonshine Tiny   |    | Qwen 3.5-0.5B    |    | Pocket-TTS       |
-| (in-process)     |    | llama.cpp server  |    | uvx serve        |
-| moonshine-onnx   |    | port 8080         |    | port 8000        |
+| Moonshine Tiny   |    | Qwen 2.5-0.5B    |    | Pocket-TTS       |
+| (in-process)     |    | Ollama server    |    | start-tts.sh     |
+| moonshine-onnx   |    | port 11434       |    | port 8000        |
 | ~26 MB           |    | ~400 MB (Q4)     |    | CPU only         |
 +------------------+    +------------------+    +------------------+
 ```
@@ -48,7 +48,7 @@ User speaks into mic
         |  messages[]
         v
 +-------+--------+
-|  Qwen 3.5-0.5B |  ~50-300ms to first token
+|  Qwen 2.5-0.5B |  ~50-300ms to first token
 |  llama.cpp SSE  |  streams tokens via Server-Sent Events
 +-------+--------+
         |  sentence boundary detected (. ? !)
@@ -78,115 +78,58 @@ Speech-to-text. Runs inside the Python orchestrator process via ONNX Runtime.
 - Latency: ~80-150ms per utterance
 - Install: `pip install moonshine-onnx` (downloads model automatically on first use)
 
-### 2. Qwen 3.5-0.5B Instruct (LLM)
+### 2. Qwen 2.5-0.5B Instruct (LLM)
 
-Language model for generating tutor responses. Runs as an HTTP server via llama.cpp.
+Language model for generating tutor responses. Runs as an HTTP server via Ollama.
 
-- Size: ~400 MB (Q4_K_M quantization)
-- Runs on: CPU or GPU (CUDA/Vulkan)
+- Size: ~400 MB (4-bit quantization)
+- Runs on: CPU or GPU
 - Latency: ~50-100ms first token (GPU), ~200-500ms (CPU)
 
-**Download the GGUF file:**
+**Install and Run via Ollama:**
 
 ```bash
-# Option A: Using huggingface-cli
-pip install huggingface-hub
-huggingface-cli download Qwen/Qwen3.5-0.5B-Instruct-GGUF \
-  qwen3.5-0.5b-instruct-q4_k_m.gguf \
-  --local-dir .
-
-# Option B: Direct download
-# Go to https://huggingface.co/Qwen/Qwen3.5-0.5B-Instruct-GGUF
-# Download qwen3.5-0.5b-instruct-q4_k_m.gguf and place in project root
-```
-
-**Build llama.cpp:**
-
-```bash
-git clone https://github.com/ggml-org/llama.cpp
-cd llama.cpp
-
-# CPU only
-cmake -B build
-cmake --build build --config Release -j $(nproc)
-
-# With NVIDIA GPU (recommended)
-cmake -B build -DGGML_CUDA=ON
-cmake --build build --config Release -j $(nproc)
-
-# With Intel/AMD GPU (Vulkan)
-cmake -B build -DGGML_VULKAN=ON
-cmake --build build --config Release -j $(nproc)
-```
-
-Copy (or symlink) the built binary:
-
-```bash
-cp llama.cpp/build/bin/llama-server ./
+# Pull the model
+ollama pull qwen2.5:0.5b
 ```
 
 ### 3. Pocket-TTS (TTS)
 
-Text-to-speech. Runs as its own HTTP server via uvx (zero pip install needed).
+Text-to-speech. Runs as its own HTTP server via a shell script located in the main `Math-Tutor` repository.
 
 - Size: downloads automatically (~200 MB first run)
 - Runs on: CPU only (no GPU benefit)
 - Latency: ~100-200ms per sentence
 
-**Install uv (required for uvx):**
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-No other setup needed. `uvx pocket-tts serve` handles everything.
+Already handled by `/home/harb/Pro/Math-Tutor/start-tts.sh`.
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.10+
-- uv (for pocket-tts)
-- cmake + build tools (for llama.cpp)
-- NVIDIA CUDA toolkit (optional, for GPU acceleration)
+- Conda environment: `ai-agent`
+- Ollama installed locally
+- The standard `Math-Tutor` folder at `/home/harb/Pro/Math-Tutor` for TTS
 
 ### Step-by-step
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/harb993/Fast_tutor.git
-cd Fast_tutor
+# 1. Activate conda environment
+conda activate ai-agent
 
 # 2. Install Python dependencies
 pip install moonshine-onnx httpx sounddevice soundfile numpy
 
-# 3. Install uv (for pocket-tts)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 4. Build llama.cpp (see Models section above for GPU options)
-git clone https://github.com/ggml-org/llama.cpp
-cd llama.cpp
-cmake -B build && cmake --build build --config Release -j $(nproc)
-cp build/bin/llama-server ../
-cd ..
-
-# 5. Download the LLM model
-huggingface-cli download Qwen/Qwen3.5-0.5B-Instruct-GGUF \
-  qwen3.5-0.5b-instruct-q4_k_m.gguf --local-dir .
+# 3. Pull the LLM model
+ollama pull qwen2.5:0.5b
 ```
 
 ## Running
 
-### CPU mode
+### Standard Mode
 
 ```bash
 ./start_pipeline.sh
-```
-
-### GPU mode (NVIDIA)
-
-```bash
-USE_GPU=1 ./start_pipeline.sh
 ```
 
 ### Using Procfile (alternative)
@@ -196,12 +139,12 @@ pip install honcho
 honcho start
 ```
 
-This starts all three services:
+This starts all three services cleanly:
 
 ```
-Terminal 1: uvx pocket-tts serve --voice "hf://kyutai/tts-voices/jessica-jian/casual.wav"
-Terminal 2: ./llama-server -m qwen3.5-0.5b-instruct-q4_k_m.gguf --port 8080 -c 2048 --threads 4
-Terminal 3: python orchestrator.py
+Terminal 1: /home/harb/Pro/Math-Tutor/start-tts.sh
+Terminal 2: OLLAMA_ORIGINS="*" ollama serve
+Terminal 3: /home/harb/miniconda3/envs/ai-agent/bin/python orchestrator.py
 ```
 
 ### Dashboard

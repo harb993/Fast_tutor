@@ -439,7 +439,7 @@
     <div class="topbar-right">
         <div class="conn-badge">
             <div class="conn-dot" id="llmDot"></div>
-            <span>LLM :8080</span>
+            <span>LLM :11434</span>
         </div>
         <div class="conn-badge">
             <div class="conn-dot" id="ttsDot"></div>
@@ -729,14 +729,15 @@
         pSet('Ctx', 'done', `"${ctx.substring(0,60)}..."`);
 
         // LLM
-        pSet('LLM', 'active', 'POST localhost:8080/v1/chat/completions');
-        log(`Request: stream=false, max_tokens=40, model=Qwen3.5-0.5B`, 'info', 'llm');
+        pSet('LLM', 'active', 'POST localhost:11434/v1/chat/completions');
+        log(`Request: stream=false, max_tokens=40, model=qwen2.5:0.5b`, 'info', 'llm');
 
         try {
-            const res = await fetch('http://localhost:8080/v1/chat/completions', {
+            const res = await fetch('http://localhost:11434/v1/chat/completions', {
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({
+                    model: 'qwen2.5:0.5b',
                     messages:[
                         {role:'system',content:'Brief kids tutor. 1-2 sentences max. No emojis.'},
                         {role:'user',content:ctx}
@@ -813,10 +814,10 @@
 
     // --- Connection check ---
     async function checkConn() {
-        log('Checking LLM (localhost:8080)...', 'info', 'sys');
+        log('Checking LLM (localhost:11434)...', 'info', 'sys');
         try {
-            const r = await fetch('http://localhost:8080/health');
-            if(r.ok) { llmOk=true; $('llmDot').classList.add('on'); log('LLM connected.','ok','llm'); }
+            const r = await fetch('http://localhost:11434/');
+            if(r.ok || r.status < 500) { llmOk=true; $('llmDot').classList.add('on'); log('LLM connected.','ok','llm'); }
         } catch { log('LLM offline.','warn','llm'); }
 
         log('Checking TTS (localhost:8000)...', 'info', 'sys');
