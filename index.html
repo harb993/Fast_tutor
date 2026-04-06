@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fast Tutor Dashboard</title>
-    <meta name="description" content="Offline math tutor pipeline dashboard with real-time model monitoring.">
+    <meta name="description" content="Offline math tutor pipeline dashboard with real-time model monitoring and interactive chat.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -30,7 +30,7 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            padding: 1rem;
+            padding: 0.75rem;
         }
 
         /* Top bar */
@@ -38,11 +38,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.5rem 0 1rem;
+            padding: 0.4rem 0 0.75rem;
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
         .topbar h1 {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 700;
             color: var(--text);
             letter-spacing: -0.02em;
@@ -53,17 +55,17 @@
         .topbar-right {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
         }
 
         .conn-badge {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            font-size: 0.7rem;
+            gap: 0.35rem;
+            font-size: 0.65rem;
             font-weight: 500;
             color: var(--dim);
-            padding: 0.3rem 0.6rem;
+            padding: 0.25rem 0.5rem;
             background: var(--panel);
             border: 1px solid var(--border);
             border-radius: 100px;
@@ -73,73 +75,48 @@
             width: 6px; height: 6px;
             border-radius: 50%;
             background: var(--red);
+            transition: background 0.3s;
         }
         .conn-dot.on { background: var(--green); }
 
-        /* Dashboard grid */
+        /* Dashboard grid — 3 columns */
         .grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto auto 1fr;
-            gap: 0.75rem;
-            max-width: 1100px;
+            grid-template-columns: 1fr 1.1fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: 0.6rem;
+            max-width: 1400px;
             margin: 0 auto;
+            height: calc(100vh - 3.5rem);
         }
 
-        /* Panels */
-        .panel {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        .panel-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.6rem 0.85rem;
-            border-bottom: 1px solid var(--border);
-            background: var(--panel-alt);
-        }
-
-        .panel-title {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--dim);
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
-        .panel-body { padding: 0.85rem; }
-
-        /* Stats row */
+        /* Stats row spans all columns */
         .stats-row {
             grid-column: 1 / -1;
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 0.75rem;
+            gap: 0.6rem;
         }
 
         .stat-card {
             background: var(--panel);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 0.75rem 0.85rem;
+            padding: 0.6rem 0.75rem;
         }
 
         .stat-label {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 500;
             color: var(--dim);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.2rem;
         }
 
         .stat-value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.5rem;
+            font-size: 1.35rem;
             font-weight: 700;
         }
 
@@ -149,19 +126,53 @@
         .stat-value.blue { color: var(--blue); }
         .stat-value.dim { color: var(--dim); }
 
-        /* Problem panel */
-        .problem-panel { grid-column: 1; }
+        /* Panels */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel-alt);
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .panel-body {
+            padding: 0.75rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Problem panel — left column */
+        .problem-panel { grid-column: 1; grid-row: 2; }
 
         .category-row {
             display: flex;
-            gap: 0.35rem;
+            gap: 0.3rem;
             flex-wrap: wrap;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.6rem;
         }
 
         .cat-btn {
-            padding: 0.3rem 0.65rem;
-            font-size: 0.7rem;
+            padding: 0.25rem 0.55rem;
+            font-size: 0.65rem;
             font-weight: 500;
             font-family: 'Inter', sans-serif;
             background: transparent;
@@ -177,13 +188,13 @@
 
         .diff-row {
             display: flex;
-            gap: 0.35rem;
-            margin-bottom: 1rem;
+            gap: 0.3rem;
+            margin-bottom: 0.75rem;
         }
 
         .diff-btn {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.65rem;
+            padding: 0.2rem 0.45rem;
+            font-size: 0.6rem;
             font-weight: 500;
             font-family: 'Inter', sans-serif;
             background: transparent;
@@ -199,38 +210,38 @@
 
         .problem-display {
             text-align: center;
-            padding: 1.5rem 0;
+            padding: 1rem 0;
         }
 
         .q-num {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 500;
             color: var(--dim);
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
         }
 
         .q-text {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: 700;
             color: var(--text);
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
         }
 
         .input-row {
             display: flex;
-            gap: 0.5rem;
-            max-width: 240px;
+            gap: 0.4rem;
+            max-width: 220px;
             margin: 0 auto;
         }
 
         #answerInput {
             flex: 1;
-            padding: 0.6rem 0.75rem;
+            padding: 0.55rem 0.65rem;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 600;
             text-align: center;
             background: var(--bg);
@@ -244,8 +255,8 @@
         #answerInput:focus { border-color: var(--accent); }
 
         #submitBtn {
-            padding: 0.6rem 1rem;
-            font-size: 0.8rem;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.75rem;
             font-weight: 600;
             font-family: 'Inter', sans-serif;
             background: var(--accent);
@@ -260,10 +271,10 @@
 
         .result-line {
             text-align: center;
-            margin-top: 0.75rem;
-            font-size: 0.85rem;
+            margin-top: 0.6rem;
+            font-size: 0.8rem;
             font-weight: 600;
-            min-height: 1.4rem;
+            min-height: 1.2rem;
         }
 
         .result-line.ok { color: var(--green); }
@@ -271,31 +282,146 @@
 
         .hint-line {
             text-align: center;
+            font-size: 0.65rem;
+            color: var(--dim);
+            font-style: italic;
+            margin-top: 0.25rem;
+            min-height: 0.9rem;
+        }
+
+        /* Chat panel — center column */
+        .chat-panel { grid-column: 2; grid-row: 2; }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .chat-msg {
+            max-width: 90%;
+            padding: 0.5rem 0.7rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            line-height: 1.45;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        .chat-msg.tutor {
+            background: rgba(167,139,250,0.12);
+            border: 1px solid rgba(167,139,250,0.2);
+            color: var(--text);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-msg.kid {
+            background: rgba(74,222,128,0.1);
+            border: 1px solid rgba(74,222,128,0.15);
+            color: var(--text);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-msg.system {
+            background: rgba(113,113,122,0.1);
+            border: 1px solid rgba(113,113,122,0.15);
+            color: var(--dim);
+            align-self: center;
+            font-size: 0.7rem;
+            text-align: center;
+        }
+
+        .chat-msg .chat-sender {
+            font-size: 0.55rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.15rem;
+        }
+
+        .chat-msg.tutor .chat-sender { color: var(--accent); }
+        .chat-msg.kid .chat-sender { color: var(--green); }
+
+        .chat-typing {
             font-size: 0.7rem;
             color: var(--dim);
             font-style: italic;
-            margin-top: 0.35rem;
-            min-height: 1rem;
+            padding: 0 0.75rem 0.5rem;
+            min-height: 1.2rem;
         }
 
-        /* Pipeline panel */
-        .pipeline-panel { grid-column: 2; }
+        .chat-input-row {
+            display: flex;
+            gap: 0.4rem;
+            padding: 0.6rem 0.75rem;
+            border-top: 1px solid var(--border);
+            background: var(--panel-alt);
+            flex-shrink: 0;
+        }
+
+        #chatInput {
+            flex: 1;
+            padding: 0.5rem 0.65rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            outline: none;
+            transition: border 0.15s;
+        }
+
+        #chatInput:focus { border-color: var(--accent); }
+
+        #chatSend {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            background: var(--accent);
+            border: none;
+            border-radius: 4px;
+            color: #000;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        #chatSend:hover { opacity: 0.85; }
+
+        /* Right column: Pipeline + Log stacked */
+        .right-col {
+            grid-column: 3;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .pipeline-panel { flex: 0 0 auto; }
+        .log-panel { flex: 1; min-height: 0; }
 
         .pipe-list { list-style: none; }
 
         .pipe-item {
             display: grid;
             grid-template-columns: 8px 1fr auto;
-            gap: 0.6rem;
+            gap: 0.5rem;
             align-items: center;
-            padding: 0.5rem 0;
+            padding: 0.4rem 0;
             border-bottom: 1px solid rgba(255,255,255,0.04);
         }
 
         .pipe-item:last-child { border-bottom: none; }
 
         .p-dot {
-            width: 8px; height: 8px;
+            width: 7px; height: 7px;
             border-radius: 50%;
             background: var(--border);
             transition: all 0.25s;
@@ -311,10 +437,8 @@
 
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-        .p-info {}
-
         .p-name {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             color: var(--text);
         }
@@ -324,75 +448,36 @@
         .pipe-item.error .p-name { color: var(--red); }
 
         .p-detail {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--dim);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 280px;
+            max-width: 220px;
         }
 
         .p-time {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--dim);
-            min-width: 40px;
+            min-width: 38px;
             text-align: right;
         }
 
         .pipe-item.done .p-time { color: var(--green); }
         .pipe-item.active .p-time { color: var(--yellow); }
 
-        /* Tutor reply */
-        .reply-row {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid var(--border);
-            display: none;
-        }
-
-        .reply-row.vis { display: block; }
-
-        .reply-tag {
-            font-size: 0.6rem;
-            font-weight: 600;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.2rem;
-        }
-
-        .reply-text {
-            font-size: 0.8rem;
-            color: var(--text);
-            line-height: 1.4;
-        }
-
-        /* Log panel */
-        .log-panel {
-            grid-column: 1 / -1;
-        }
-
-        .log-panel .panel-head {
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-
         .log-body {
-            padding: 0.5rem 0.75rem;
-            max-height: 280px;
+            padding: 0.4rem 0.6rem;
             overflow-y: auto;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
-            line-height: 1.55;
+            font-size: 0.65rem;
+            line-height: 1.5;
             color: #71717a;
+            flex: 1;
         }
 
-        .log-body .l {
-            padding: 1.5px 0;
-        }
-
+        .log-body .l { padding: 1px 0; }
         .log-body .l.info { color: var(--blue); }
         .log-body .l.ok { color: var(--green); }
         .log-body .l.err { color: var(--red); }
@@ -400,11 +485,11 @@
 
         .tag {
             display: inline-block;
-            font-size: 0.55rem;
+            font-size: 0.5rem;
             font-weight: 700;
-            padding: 1px 4px;
+            padding: 1px 3px;
             border-radius: 2px;
-            margin-right: 3px;
+            margin-right: 2px;
             text-transform: uppercase;
             letter-spacing: 0.03em;
         }
@@ -418,17 +503,25 @@
 
         .log-count {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             color: var(--dim);
         }
 
+        /* Log panel full width at bottom */
+        .log-panel-bottom {
+            grid-column: 1 / -1;
+            grid-row: 3;
+        }
+
         /* Responsive */
-        @media (max-width: 700px) {
+        @media (max-width: 900px) {
             .grid {
                 grid-template-columns: 1fr;
+                height: auto;
             }
             .stats-row { grid-template-columns: repeat(3, 1fr); }
-            .problem-panel, .pipeline-panel, .log-panel { grid-column: 1; }
+            .problem-panel, .chat-panel, .right-col { grid-column: 1; grid-row: auto; }
+            .log-panel-bottom { grid-column: 1; }
         }
     </style>
 </head>
@@ -474,7 +567,7 @@
         </div>
     </div>
 
-    <!-- Problem -->
+    <!-- Problem panel — left -->
     <div class="panel problem-panel">
         <div class="panel-head">
             <span class="panel-title">Problem</span>
@@ -495,7 +588,7 @@
             </div>
             <div class="problem-display">
                 <div class="q-num" id="qNum">Question 1</div>
-                <div class="q-text" id="qText">3 + 4 = ?</div>
+                <div class="q-text" id="qText">--</div>
                 <div class="input-row">
                     <input type="text" id="answerInput" placeholder="?" autocomplete="off">
                     <button id="submitBtn">Check</button>
@@ -506,73 +599,84 @@
         </div>
     </div>
 
-    <!-- Pipeline -->
-    <div class="panel pipeline-panel">
+    <!-- Chat panel — center -->
+    <div class="panel chat-panel">
         <div class="panel-head">
-            <span class="panel-title">Pipeline</span>
-            <span class="panel-title" id="pipeStatus">idle</span>
+            <span class="panel-title">Tutor Chat</span>
+            <span class="panel-title" id="chatStatus">starting</span>
         </div>
-        <div class="panel-body">
-            <ul class="pipe-list">
-                <li class="pipe-item" id="pSTT">
-                    <div class="p-dot"></div>
-                    <div class="p-info">
-                        <div class="p-name">STT - Moonshine Tiny</div>
-                        <div class="p-detail" id="dSTT">Idle</div>
-                    </div>
-                    <div class="p-time" id="tSTT">--</div>
-                </li>
-                <li class="pipe-item" id="pCtx">
-                    <div class="p-dot"></div>
-                    <div class="p-info">
-                        <div class="p-name">Context Builder</div>
-                        <div class="p-detail" id="dCtx">Idle</div>
-                    </div>
-                    <div class="p-time" id="tCtx">--</div>
-                </li>
-                <li class="pipe-item" id="pLLM">
-                    <div class="p-dot"></div>
-                    <div class="p-info">
-                        <div class="p-name">LLM - Qwen 3.5-0.5B</div>
-                        <div class="p-detail" id="dLLM">Idle</div>
-                    </div>
-                    <div class="p-time" id="tLLM">--</div>
-                </li>
-                <li class="pipe-item" id="pTTS">
-                    <div class="p-dot"></div>
-                    <div class="p-info">
-                        <div class="p-name">TTS - Pocket-TTS</div>
-                        <div class="p-detail" id="dTTS">Idle</div>
-                    </div>
-                    <div class="p-time" id="tTTS">--</div>
-                </li>
-                <li class="pipe-item" id="pAudio">
-                    <div class="p-dot"></div>
-                    <div class="p-info">
-                        <div class="p-name">Audio Playback</div>
-                        <div class="p-detail" id="dAudio">Idle</div>
-                    </div>
-                    <div class="p-time" id="tAudio">--</div>
-                </li>
-            </ul>
-            <div class="reply-row" id="replyRow">
-                <div class="reply-tag">Tutor response</div>
-                <div class="reply-text" id="replyText"></div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-typing" id="chatTyping"></div>
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+            <button id="chatSend">Send</button>
+        </div>
+    </div>
+
+    <!-- Right column: Pipeline + Log -->
+    <div class="right-col">
+        <div class="panel pipeline-panel">
+            <div class="panel-head">
+                <span class="panel-title">Pipeline</span>
+                <span class="panel-title" id="pipeStatus">idle</span>
+            </div>
+            <div class="panel-body" style="padding:0.5rem 0.75rem;">
+                <ul class="pipe-list">
+                    <li class="pipe-item" id="pSTT">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">STT - Moonshine</div>
+                            <div class="p-detail" id="dSTT">Idle</div>
+                        </div>
+                        <div class="p-time" id="tSTT">--</div>
+                    </li>
+                    <li class="pipe-item" id="pCtx">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">Context Builder</div>
+                            <div class="p-detail" id="dCtx">Idle</div>
+                        </div>
+                        <div class="p-time" id="tCtx">--</div>
+                    </li>
+                    <li class="pipe-item" id="pLLM">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">LLM - Qwen 2.5-0.5B</div>
+                            <div class="p-detail" id="dLLM">Idle</div>
+                        </div>
+                        <div class="p-time" id="tLLM">--</div>
+                    </li>
+                    <li class="pipe-item" id="pTTS">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">TTS - Pocket-TTS</div>
+                            <div class="p-detail" id="dTTS">Idle</div>
+                        </div>
+                        <div class="p-time" id="tTTS">--</div>
+                    </li>
+                    <li class="pipe-item" id="pAudio">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">Audio Playback</div>
+                            <div class="p-detail" id="dAudio">Idle</div>
+                        </div>
+                        <div class="p-time" id="tAudio">--</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="panel log-panel">
+            <div class="panel-head">
+                <span class="panel-title">Log</span>
+                <span class="log-count" id="logCount">0</span>
+            </div>
+            <div class="log-body" id="logBody">
+                <div class="l info"><span class="tag sys">SYS</span> Initialized</div>
             </div>
         </div>
     </div>
 
-    <!-- Log -->
-    <div class="panel log-panel">
-        <div class="panel-head">
-            <span class="panel-title">Log</span>
-            <span class="log-count" id="logCount">0 entries</span>
-        </div>
-        <div class="log-body" id="logBody">
-            <div class="l info"><span class="tag sys">SYS</span> Pipeline log initialized</div>
-        </div>
-    </div>
-
+    <!-- Bottom log full width -->
 </div>
 
 <script>
@@ -584,6 +688,9 @@
     let logEntries = 1;
     let pipeStart = 0;
     const timers = {};
+    let kidName = '';
+    let chatHistory = []; // for LLM context
+    let onboardingPhase = 'checking'; // checking -> askName -> ready
 
     const $ = id => document.getElementById(id);
 
@@ -598,64 +705,204 @@
         $('logBody').appendChild(el);
         $('logBody').scrollTop = $('logBody').scrollHeight;
         logEntries++;
-        $('logCount').textContent = `${logEntries} entries`;
+        $('logCount').textContent = logEntries;
+    }
+
+    // --- Chat ---
+    function chatAdd(text, type='tutor') {
+        const el = document.createElement('div');
+        el.className = `chat-msg ${type}`;
+        if (type === 'system') {
+            el.textContent = text;
+        } else {
+            const sender = type === 'tutor' ? 'Tutor' : (kidName || 'You');
+            el.innerHTML = `<div class="chat-sender">${sender}</div>${text}`;
+        }
+        $('chatMessages').appendChild(el);
+        $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
+    }
+
+    function chatTyping(show, text='') {
+        $('chatTyping').textContent = show ? (text || 'Tutor is thinking...') : '';
+    }
+
+    // --- Chat LLM call ---
+    async function chatLLM(userMsg, systemPrompt) {
+        if (!llmOk) {
+            chatAdd('LLM is offline. Cannot respond.', 'system');
+            return null;
+        }
+
+        // Build messages
+        const messages = [
+            { role: 'system', content: systemPrompt }
+        ];
+        // Add last 6 msgs of history for context
+        const recent = chatHistory.slice(-6);
+        messages.push(...recent);
+        messages.push({ role: 'user', content: userMsg });
+
+        chatTyping(true);
+        pReset();
+
+        // STT stage (browser input)
+        timers['STT'] = pipeStart;
+        pSet('STT', 'done', 'Text input from chat');
+
+        // Context
+        pSet('Ctx', 'active', 'Building prompt...');
+        await sleep(20);
+        pSet('Ctx', 'done', `${messages.length} messages`);
+
+        // LLM
+        pSet('LLM', 'active', 'POST localhost:11434/v1/chat/completions');
+        log(`Chat request: ${messages.length} msgs`, 'info', 'llm');
+
+        try {
+            const res = await fetch('http://localhost:11434/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'qwen2.5:0.5b',
+                    messages: messages,
+                    stream: false,
+                    max_tokens: 80
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const d = await res.json();
+            const reply = d.choices[0].message.content;
+            const tok = d.usage ? d.usage.completion_tokens : '?';
+            pSet('LLM', 'done', `${tok} tokens`);
+            log(`Reply: "${reply}"`, 'ok', 'llm');
+
+            // Save to history
+            chatHistory.push({ role: 'user', content: userMsg });
+            chatHistory.push({ role: 'assistant', content: reply });
+
+            // TTS
+            if (ttsOk) {
+                await speakText(reply);
+            } else {
+                pSet('TTS', 'done', 'Skipped (offline)');
+                pSet('Audio', 'done', 'Skipped');
+                const total = Math.round(performance.now() - pipeStart);
+                $('sLatency').textContent = total + 'ms';
+                $('pipeStatus').textContent = `done (${total}ms)`;
+            }
+
+            chatTyping(false);
+            return reply;
+        } catch (e) {
+            pSet('LLM', 'error', e.message);
+            $('pipeStatus').textContent = 'error';
+            chatTyping(false);
+            log(`Chat LLM error: ${e.message}`, 'err', 'llm');
+            return null;
+        }
+    }
+
+    async function speakText(text) {
+        pSet('TTS', 'active', `Generating (${text.length} chars)...`);
+        log(`TTS payload: "${text.substring(0, 60)}"`, 'info', 'tts');
+
+        try {
+            const tr = await fetch('http://localhost:8000/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+
+            if (tr.ok) {
+                const blob = await tr.blob();
+                const kb = (blob.size / 1024).toFixed(1);
+                pSet('TTS', 'done', `${kb} KB`);
+                log(`Audio: ${kb} KB`, 'ok', 'tts');
+
+                pSet('Audio', 'active', `Playing...`);
+                const url = URL.createObjectURL(blob);
+                const au = new Audio(url);
+
+                return new Promise(resolve => {
+                    au.play();
+                    au.onended = () => {
+                        pSet('Audio', 'done', 'Complete');
+                        const total = Math.round(performance.now() - pipeStart);
+                        $('sLatency').textContent = total + 'ms';
+                        $('pipeStatus').textContent = `done (${total}ms)`;
+                        log(`Total pipeline: ${total}ms`, 'ok', 'sys');
+                        resolve();
+                    };
+                    au.onerror = () => {
+                        pSet('Audio', 'error', 'Decode failed');
+                        resolve();
+                    };
+                });
+            } else {
+                pSet('TTS', 'error', `HTTP ${tr.status}`);
+                log(`TTS error: ${tr.status}`, 'err', 'tts');
+            }
+        } catch (e) {
+            pSet('TTS', 'error', e.message);
+            log(`TTS error: ${e.message}`, 'err', 'tts');
+        }
     }
 
     // --- Pipeline ---
-    const stageMap = {STT:'stt',Ctx:'ctx',LLM:'llm',TTS:'tts',Audio:'audio'};
+    const stageMap = { STT: 'stt', Ctx: 'ctx', LLM: 'llm', TTS: 'tts', Audio: 'audio' };
 
     function pSet(s, state, detail) {
         const el = $(`p${s}`);
-        if(!el) return;
+        if (!el) return;
         el.className = `pipe-item ${state}`;
-        if(detail) $(`d${s}`).textContent = detail;
-        const ls = stageMap[s]||'sys';
-        if(state==='active') {
+        if (detail) $(`d${s}`).textContent = detail;
+        const ls = stageMap[s] || 'sys';
+        if (state === 'active') {
             timers[s] = performance.now();
             $(`t${s}`).textContent = '...';
-            log(`Started. ${detail||''}`, 'warn', ls);
-        } else if(state==='done' && timers[s]) {
-            const ms = Math.round(performance.now()-timers[s]);
-            $(`t${s}`).textContent = ms+'ms';
-            log(`Done in ${ms}ms. ${detail||''}`, 'ok', ls);
-        } else if(state==='done') {
-            log(`Done. ${detail||''}`, 'ok', ls);
-        } else if(state==='error') {
+            log(`Started. ${detail || ''}`, 'warn', ls);
+        } else if (state === 'done' && timers[s]) {
+            const ms = Math.round(performance.now() - timers[s]);
+            $(`t${s}`).textContent = ms + 'ms';
+            log(`Done in ${ms}ms. ${detail || ''}`, 'ok', ls);
+        } else if (state === 'done') {
+            log(`Done. ${detail || ''}`, 'ok', ls);
+        } else if (state === 'error') {
             $(`t${s}`).textContent = 'ERR';
-            log(`FAILED: ${detail||''}`, 'err', ls);
+            log(`FAILED: ${detail || ''}`, 'err', ls);
         }
     }
 
     function pReset() {
-        ['STT','Ctx','LLM','TTS','Audio'].forEach(s => {
+        ['STT', 'Ctx', 'LLM', 'TTS', 'Audio'].forEach(s => {
             $(`p${s}`).className = 'pipe-item';
             $(`d${s}`).textContent = 'Idle';
             $(`t${s}`).textContent = '--';
         });
         pipeStart = performance.now();
         $('pipeStatus').textContent = 'running';
-        log('--- New pipeline run ---', 'info', 'sys');
+        log('--- Pipeline run ---', 'info', 'sys');
     }
 
     // --- Problem generation ---
-    function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+    function ri(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
 
     const R = {
-        easy:  {a:[1,10],s:[1,10],m:[1,5],d:[1,5]},
-        medium:{a:[10,50],s:[10,50],m:[2,10],d:[2,10]},
-        hard:  {a:[50,200],s:[20,100],m:[5,12],d:[3,12]}
+        easy:   { a: [1, 10], s: [1, 10], m: [1, 5], d: [1, 5] },
+        medium: { a: [10, 50], s: [10, 50], m: [2, 10], d: [2, 10] },
+        hard:   { a: [50, 200], s: [20, 100], m: [5, 12], d: [3, 12] }
     };
 
     function gen() {
         let c = category;
-        if(c==='mixed') c = ['addition','subtraction','multiplication','division'][ri(0,3)];
+        if (c === 'mixed') c = ['addition', 'subtraction', 'multiplication', 'division'][ri(0, 3)];
         const r = R[difficulty];
-        let a,b,op,ans;
-        switch(c){
-            case 'addition': a=ri(r.a[0],r.a[1]); b=ri(r.a[0],r.a[1]); op='+'; ans=a+b; break;
-            case 'subtraction': a=ri(r.s[0],r.s[1]); b=ri(r.s[0],Math.min(a,r.s[1])); op='-'; ans=a-b; break;
-            case 'multiplication': a=ri(r.m[0],r.m[1]); b=ri(r.m[0],r.m[1]); op='x'; ans=a*b; break;
-            case 'division': b=ri(r.d[0],r.d[1]); ans=ri(1,r.d[1]); a=b*ans; op='/'; break;
+        let a, b, op, ans;
+        switch (c) {
+            case 'addition': a = ri(r.a[0], r.a[1]); b = ri(r.a[0], r.a[1]); op = '+'; ans = a + b; break;
+            case 'subtraction': a = ri(r.s[0], r.s[1]); b = ri(r.s[0], Math.min(a, r.s[1])); op = '-'; ans = a - b; break;
+            case 'multiplication': a = ri(r.m[0], r.m[1]); b = ri(r.m[0], r.m[1]); op = 'x'; ans = a * b; break;
+            case 'division': b = ri(r.d[0], r.d[1]); ans = ri(1, r.d[1]); a = b * ans; op = '/'; break;
         }
         answer = ans;
         $('qLabel').textContent = `Q${qNum}`;
@@ -669,171 +916,186 @@
         log(`Problem: ${a} ${op} ${b} = ${ans} [${c}, ${difficulty}]`, 'info', 'sys');
     }
 
-    // --- Check ---
+    // --- Check answer ---
     function check() {
         const v = $('answerInput').value.trim();
-        if(!v) return;
-        const n = parseInt(v,10);
-        if(isNaN(n)){ $('result').textContent='Enter a number'; $('result').className='result-line bad'; return; }
+        if (!v) return;
+        const n = parseInt(v, 10);
+        if (isNaN(n)) { $('result').textContent = 'Enter a number'; $('result').className = 'result-line bad'; return; }
 
-        if(n===answer) {
+        if (n === answer) {
             correct++; streak++;
             $('result').textContent = 'Correct';
             $('result').className = 'result-line ok';
             log(`Answer: ${n} -- Correct. Streak: ${streak}`, 'ok', 'sys');
-            sendToTutor(`The child answered ${answer} correctly. Streak is ${streak}. Say something encouraging, brief.`);
+
+            const name = kidName || 'The child';
+            chatAdd(`${n} (correct)`, 'kid');
+            chatLLM(
+                `${name} just solved ${$('qText').textContent.replace('= ?', `= ${answer}`)} correctly. Streak is ${streak}. Give a brief encouraging response.`,
+                `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Keep responses to 1-2 short sentences. No emojis.`
+            ).then(reply => {
+                if (reply) chatAdd(reply, 'tutor');
+            });
         } else {
-            wrong++; streak=0;
+            wrong++; streak = 0;
             $('result').textContent = `Wrong. Answer: ${answer}`;
             $('result').className = 'result-line bad';
             $('hint').textContent = getHint();
             log(`Answer: ${n} -- Wrong (expected ${answer})`, 'err', 'sys');
-            sendToTutor(`The child answered ${n} but correct was ${answer}. Gently encourage.`);
+
+            const name = kidName || 'The child';
+            chatAdd(`${n} (wrong)`, 'kid');
+            chatLLM(
+                `${name} answered ${n} but the correct answer to ${$('qText').textContent.replace('= ?', '')} was ${answer}. Gently explain why and encourage them.`,
+                `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Keep responses to 1-2 short sentences. No emojis.`
+            ).then(reply => {
+                if (reply) chatAdd(reply, 'tutor');
+            });
         }
 
         $('sCorrect').textContent = correct;
         $('sWrong').textContent = wrong;
         $('sStreak').textContent = streak;
         const total = correct + wrong;
-        $('sAccuracy').textContent = total ? Math.round((correct/total)*100)+'%' : '--';
+        $('sAccuracy').textContent = total ? Math.round((correct / total) * 100) + '%' : '--';
         qNum++;
         setTimeout(gen, 1500);
     }
 
     function getHint() {
         const t = $('qText').textContent;
-        if(t.includes('+')) return 'Count forward from the bigger number.';
-        if(t.includes('-')) return 'Count backward from the first number.';
-        if(t.includes('x')) return 'Multiply = add repeatedly.';
-        if(t.includes('/')) return 'How many groups can you make?';
+        if (t.includes('+')) return 'Count forward from the bigger number.';
+        if (t.includes('-')) return 'Count backward from the first number.';
+        if (t.includes('x')) return 'Multiply = add repeatedly.';
+        if (t.includes('/')) return 'How many groups can you make?';
         return '';
     }
 
-    // --- Tutor pipeline ---
-    async function sendToTutor(ctx) {
-        if(!llmOk) {
-            log('Pipeline skipped: LLM not connected.', 'warn', 'sys');
-            return;
-        }
-
-        pReset();
-
-        // STT
-        timers['STT'] = pipeStart;
-        pSet('STT', 'done', 'Browser input (no mic)');
-
-        // Context builder
-        pSet('Ctx', 'active', 'Building prompt...');
-        log(`State: cat=${category} diff=${difficulty} q=${qNum}`, 'info', 'ctx');
-        await sleep(30);
-        pSet('Ctx', 'done', `"${ctx.substring(0,60)}..."`);
-
-        // LLM
-        pSet('LLM', 'active', 'POST localhost:11434/v1/chat/completions');
-        log(`Request: stream=false, max_tokens=40, model=qwen2.5:0.5b`, 'info', 'llm');
-
-        try {
-            const res = await fetch('http://localhost:11434/v1/chat/completions', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    model: 'qwen2.5:0.5b',
-                    messages:[
-                        {role:'system',content:'Brief kids tutor. 1-2 sentences max. No emojis.'},
-                        {role:'user',content:ctx}
-                    ], stream:false, max_tokens:40
-                })
-            });
-            if(!res.ok) throw new Error(`HTTP ${res.status}`);
-            const d = await res.json();
-            const reply = d.choices[0].message.content;
-            const tok = d.usage ? d.usage.completion_tokens : '?';
-            pSet('LLM', 'done', `"${reply.substring(0,50)}"`);
-            log(`Tokens: ${tok}. "${reply}"`, 'ok', 'llm');
-
-            // Show reply
-            $('replyText').textContent = reply;
-            $('replyRow').classList.add('vis');
-            setTimeout(()=>$('replyRow').classList.remove('vis'), 8000);
-
-            // TTS
-            if(!ttsOk) {
-                log('TTS server not connected, skipping audio.', 'warn', 'tts');
-                $('pipeStatus').textContent = 'done (no tts)';
-                return;
-            }
-            pSet('TTS', 'active', `POST localhost:8000/generate (${reply.length} chars)`);
-            log(`Payload: "${reply}"`, 'info', 'tts');
-
-            const tr = await fetch('http://localhost:8000/generate', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({text:reply})
-            });
-
-            if(tr.ok) {
-                const blob = await tr.blob();
-                const kb = (blob.size/1024).toFixed(1);
-                const ct = tr.headers.get('content-type')||'?';
-                pSet('TTS', 'done', `${kb} KB (${ct})`);
-                log(`Audio: ${kb} KB, ${ct}`, 'ok', 'tts');
-
-                pSet('Audio', 'active', `Playing ${kb} KB...`);
-                const url = URL.createObjectURL(blob);
-                const au = new Audio(url);
-                au.play();
-                au.onended = () => {
-                    pSet('Audio', 'done', 'Complete');
-                    const total = Math.round(performance.now()-pipeStart);
-                    $('sLatency').textContent = total+'ms';
-                    $('pipeStatus').textContent = `done (${total}ms)`;
-                    log(`Playback done. Total: ${total}ms`, 'ok', 'audio');
-                    log(`--- Pipeline complete: ${total}ms ---`, 'ok', 'sys');
-                };
-                au.onerror = () => {
-                    pSet('Audio', 'error', 'Decode failed');
-                    $('pipeStatus').textContent = 'error';
-                };
-            } else {
-                const body = await tr.text().catch(()=>'');
-                pSet('TTS', 'error', `HTTP ${tr.status}`);
-                log(`${tr.status}: ${body.substring(0,80)}`, 'err', 'tts');
-                $('pipeStatus').textContent = 'error';
-            }
-        } catch(e) {
-            if($('pLLM').classList.contains('active')) {
-                pSet('LLM', 'error', e.message);
-            } else {
-                pSet('TTS', 'error', e.message);
-            }
-            $('pipeStatus').textContent = 'error';
-        }
-    }
-
-    function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
     // --- Connection check ---
     async function checkConn() {
         log('Checking LLM (localhost:11434)...', 'info', 'sys');
         try {
             const r = await fetch('http://localhost:11434/');
-            if(r.ok || r.status < 500) { llmOk=true; $('llmDot').classList.add('on'); log('LLM connected.','ok','llm'); }
-        } catch { log('LLM offline.','warn','llm'); }
+            if (r.ok || r.status < 500) {
+                llmOk = true;
+                $('llmDot').classList.add('on');
+                log('LLM connected.', 'ok', 'llm');
+            }
+        } catch { log('LLM offline.', 'warn', 'llm'); }
 
         log('Checking TTS (localhost:8000)...', 'info', 'sys');
         try {
             const r = await fetch('http://localhost:8000/');
-            if(r.ok || r.status < 500) { ttsOk=true; $('ttsDot').classList.add('on'); log(`TTS responded: ${r.status}`,'ok','tts'); }
-        } catch { log('TTS offline.','warn','tts'); }
+            if (r.ok || r.status < 500) {
+                ttsOk = true;
+                $('ttsDot').classList.add('on');
+                log(`TTS responded: ${r.status}`, 'ok', 'tts');
+            }
+        } catch { log('TTS offline.', 'warn', 'tts'); }
+
+        return { llm: llmOk, tts: ttsOk };
+    }
+
+    // --- Onboarding flow ---
+    async function startOnboarding() {
+        $('chatStatus').textContent = 'checking';
+        chatAdd('Running system checks...', 'system');
+
+        // Check connections
+        const status = await checkConn();
+
+        // Report status in chat
+        await sleep(300);
+        if (status.llm) {
+            chatAdd('LLM server (Ollama) -- connected', 'system');
+        } else {
+            chatAdd('LLM server (Ollama) -- OFFLINE. Chat will not work.', 'system');
+        }
+
+        await sleep(200);
+        if (status.tts) {
+            chatAdd('TTS server (Pocket-TTS) -- connected', 'system');
+        } else {
+            chatAdd('TTS server (Pocket-TTS) -- OFFLINE. No voice output.', 'system');
+        }
+
+        await sleep(300);
+
+        if (!status.llm) {
+            chatAdd('Start the backend with ./start_pipeline.sh and reload this page.', 'system');
+            $('chatStatus').textContent = 'offline';
+            onboardingPhase = 'ready';
+            gen();
+            return;
+        }
+
+        // All good — ask for name
+        onboardingPhase = 'askName';
+        $('chatStatus').textContent = 'onboarding';
+        chatAdd('All systems are running. What is your name?', 'tutor');
+        $('chatInput').placeholder = 'Type your name...';
+        $('chatInput').focus();
+    }
+
+    async function handleNameInput(name) {
+        kidName = name;
+        chatAdd(name, 'kid');
+        $('chatInput').placeholder = 'Type a message...';
+
+        // Use LLM to greet the kid
+        const reply = await chatLLM(
+            `The child just told you their name is ${name}. Greet them warmly and explain that you are their math tutor. Tell them you will help them practice math problems and they can ask you anything. Keep it brief and friendly.`,
+            `You are a warm, friendly math tutor named Fast Tutor. The child's name is ${name}. No emojis. Keep it to 2-3 sentences max.`
+        );
+
+        if (reply) {
+            chatAdd(reply, 'tutor');
+        } else {
+            chatAdd(`Welcome, ${name}! I am your math tutor. Try solving the problem on the left, or ask me anything here.`, 'tutor');
+        }
+
+        chatAdd('Math practice is ready. Answer problems on the left, or chat here anytime.', 'system');
+        onboardingPhase = 'ready';
+        $('chatStatus').textContent = 'ready';
+        gen();
+    }
+
+    async function handleChatMessage(msg) {
+        chatAdd(msg, 'kid');
+
+        const systemPrompt = `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Help them with math. Keep responses to 1-3 short sentences. No emojis. If they ask something unrelated to math, gently steer them back.`;
+
+        const reply = await chatLLM(msg, systemPrompt);
+        if (reply) {
+            chatAdd(reply, 'tutor');
+        }
+    }
+
+    // --- Chat input handler ---
+    function onChatSubmit() {
+        const msg = $('chatInput').value.trim();
+        if (!msg) return;
+        $('chatInput').value = '';
+
+        if (onboardingPhase === 'askName') {
+            handleNameInput(msg);
+        } else if (onboardingPhase === 'ready') {
+            handleChatMessage(msg);
+        }
     }
 
     // --- Events ---
     $('submitBtn').addEventListener('click', check);
-    $('answerInput').addEventListener('keydown', e => { if(e.key==='Enter') check(); });
+    $('answerInput').addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+    $('chatSend').addEventListener('click', onChatSubmit);
+    $('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') onChatSubmit(); });
 
     document.querySelectorAll('.cat-btn').forEach(b => {
         b.addEventListener('click', () => {
-            document.querySelectorAll('.cat-btn').forEach(x=>x.classList.remove('on'));
+            document.querySelectorAll('.cat-btn').forEach(x => x.classList.remove('on'));
             b.classList.add('on');
             category = b.dataset.c;
             qNum = 1; gen();
@@ -843,7 +1105,7 @@
 
     document.querySelectorAll('.diff-btn').forEach(b => {
         b.addEventListener('click', () => {
-            document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('on'));
+            document.querySelectorAll('.diff-btn').forEach(x => x.classList.remove('on'));
             b.classList.add('on');
             difficulty = b.dataset.d;
             qNum = 1; gen();
@@ -852,8 +1114,7 @@
     });
 
     // --- Init ---
-    gen();
-    checkConn();
+    startOnboarding();
 })();
 </script>
 

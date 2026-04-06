@@ -1,9 +1,5 @@
 #!/bin/bash
-# Startup sequence for the Fast_tutor offline pipeline
-# GPU MODE: Set USE_GPU=1 to enable NVIDIA CUDA acceleration
-# CPU MODE: Set USE_GPU=0 (default) for CPU-only
-
-USE_GPU=${USE_GPU:-0}
+# Startup sequence for the Fast_tutor offline pipeline using Ollama and Conda
 
 # Cleanup on exit
 cleanup() {
@@ -14,31 +10,16 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "Starting TTS Server (pocket-tts on port 8000)..."
-uvx pocket-tts serve --voice "hf://kyutai/tts-voices/jessica-jian/casual.wav" &
+echo "Starting TTS Server..."
+/home/harb/Pro/Math-Tutor/start-tts.sh &
 TTS_PID=$!
 
-echo "Starting LLM Server (llama.cpp on port 8080)..."
-if [ "$USE_GPU" = "1" ]; then
-    echo "  -> GPU mode enabled (NVIDIA CUDA, full offload)"
-    ./llama-server \
-        -m qwen3.5-0.5b-instruct-q4_k_m.gguf \
-        --port 8080 \
-        -c 2048 \
-        --threads 4 \
-        -ngl 99 &
-else
-    echo "  -> CPU mode"
-    ./llama-server \
-        -m qwen3.5-0.5b-instruct-q4_k_m.gguf \
-        --port 8080 \
-        -c 2048 \
-        --threads 4 &
-fi
+echo "Starting LLM Server (Ollama)..."
+OLLAMA_ORIGINS="*" ollama serve &
 LLM_PID=$!
 
 echo "Waiting for servers to initialize..."
-sleep 5
+sleep 3
 
-echo "Starting Python Orchestrator..."
-python orchestrator.py
+echo "Starting Python Orchestrator using Conda ai-agent environment..."
+/home/harb/miniconda3/envs/ai-agent/bin/python orchestrator.py
