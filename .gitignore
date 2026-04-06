@@ -1,0 +1,29 @@
+# Models
+*.gguf
+*.onnx
+*.bin
+*.pt
+*.pth
+*.safetensors
+
+# llama.cpp build
+llama.cpp/
+llama-server
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

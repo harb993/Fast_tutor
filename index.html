@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Tutor Dashboard</title>
+    <meta name="description" content="Offline math tutor pipeline dashboard with real-time model monitoring.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #101014;
+            --panel: #18181b;
+            --panel-alt: #1e1e22;
+            --border: #27272a;
+            --text: #e4e4e7;
+            --dim: #71717a;
+            --accent: #a78bfa;
+            --green: #4ade80;
+            --red: #f87171;
+            --yellow: #facc15;
+            --blue: #60a5fa;
+            --orange: #fb923c;
+            --radius: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        /* Top bar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0 1rem;
+        }
+
+        .topbar h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.02em;
+        }
+
+        .topbar h1 span { color: var(--accent); }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .conn-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--dim);
+            padding: 0.3rem 0.6rem;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+        }
+
+        .conn-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--red);
+        }
+        .conn-dot.on { background: var(--green); }
+
+        /* Dashboard grid */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto 1fr;
+            gap: 0.75rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.85rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel-alt);
+        }
+
+        .panel-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .panel-body { padding: 0.85rem; }
+
+        /* Stats row */
+        .stats-row {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.75rem;
+        }
+
+        .stat-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem 0.85rem;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .stat-value.green { color: var(--green); }
+        .stat-value.red { color: var(--red); }
+        .stat-value.accent { color: var(--accent); }
+        .stat-value.blue { color: var(--blue); }
+        .stat-value.dim { color: var(--dim); }
+
+        /* Problem panel */
+        .problem-panel { grid-column: 1; }
+
+        .category-row {
+            display: flex;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
+
+        .cat-btn {
+            padding: 0.3rem 0.65rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--dim);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .cat-btn:hover { border-color: var(--accent); color: var(--text); }
+        .cat-btn.on { background: var(--accent); color: #000; border-color: var(--accent); }
+
+        .diff-row {
+            display: flex;
+            gap: 0.35rem;
+            margin-bottom: 1rem;
+        }
+
+        .diff-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.65rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--dim);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .diff-btn:hover { color: var(--text); }
+        .diff-btn.on { color: var(--yellow); border-color: var(--yellow); }
+
+        .problem-display {
+            text-align: center;
+            padding: 1.5rem 0;
+        }
+
+        .q-num {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+
+        .q-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 1.25rem;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.5rem;
+            max-width: 240px;
+            margin: 0 auto;
+        }
+
+        #answerInput {
+            flex: 1;
+            padding: 0.6rem 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            outline: none;
+            transition: border 0.15s;
+        }
+
+        #answerInput:focus { border-color: var(--accent); }
+
+        #submitBtn {
+            padding: 0.6rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            background: var(--accent);
+            border: none;
+            border-radius: 4px;
+            color: #000;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        #submitBtn:hover { opacity: 0.85; }
+
+        .result-line {
+            text-align: center;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            min-height: 1.4rem;
+        }
+
+        .result-line.ok { color: var(--green); }
+        .result-line.bad { color: var(--red); }
+
+        .hint-line {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--dim);
+            font-style: italic;
+            margin-top: 0.35rem;
+            min-height: 1rem;
+        }
+
+        /* Pipeline panel */
+        .pipeline-panel { grid-column: 2; }
+
+        .pipe-list { list-style: none; }
+
+        .pipe-item {
+            display: grid;
+            grid-template-columns: 8px 1fr auto;
+            gap: 0.6rem;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .pipe-item:last-child { border-bottom: none; }
+
+        .p-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.25s;
+        }
+
+        .pipe-item.active .p-dot {
+            background: var(--yellow);
+            box-shadow: 0 0 6px rgba(250,204,21,0.4);
+            animation: blink 1s infinite;
+        }
+        .pipe-item.done .p-dot { background: var(--green); }
+        .pipe-item.error .p-dot { background: var(--red); }
+
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .p-info {}
+
+        .p-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .pipe-item.active .p-name { color: var(--yellow); }
+        .pipe-item.done .p-name { color: var(--green); }
+        .pipe-item.error .p-name { color: var(--red); }
+
+        .p-detail {
+            font-size: 0.65rem;
+            color: var(--dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 280px;
+        }
+
+        .p-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--dim);
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .pipe-item.done .p-time { color: var(--green); }
+        .pipe-item.active .p-time { color: var(--yellow); }
+
+        /* Tutor reply */
+        .reply-row {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .reply-row.vis { display: block; }
+
+        .reply-tag {
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.2rem;
+        }
+
+        .reply-text {
+            font-size: 0.8rem;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        /* Log panel */
+        .log-panel {
+            grid-column: 1 / -1;
+        }
+
+        .log-panel .panel-head {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .log-body {
+            padding: 0.5rem 0.75rem;
+            max-height: 280px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            line-height: 1.55;
+            color: #71717a;
+        }
+
+        .log-body .l {
+            padding: 1.5px 0;
+        }
+
+        .log-body .l.info { color: var(--blue); }
+        .log-body .l.ok { color: var(--green); }
+        .log-body .l.err { color: var(--red); }
+        .log-body .l.warn { color: var(--yellow); }
+
+        .tag {
+            display: inline-block;
+            font-size: 0.55rem;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 2px;
+            margin-right: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .tag.stt   { background: rgba(129,140,248,0.15); color: #818cf8; }
+        .tag.ctx   { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .tag.llm   { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .tag.tts   { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .tag.audio { background: rgba(250,204,21,0.15); color: #facc15; }
+        .tag.sys   { background: rgba(113,113,122,0.15); color: #a1a1aa; }
+
+        .log-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--dim);
+        }
+
+        /* Responsive */
+        @media (max-width: 700px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-row { grid-template-columns: repeat(3, 1fr); }
+            .problem-panel, .pipeline-panel, .log-panel { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1><span>/</span> fast-tutor</h1>
+    <div class="topbar-right">
+        <div class="conn-badge">
+            <div class="conn-dot" id="llmDot"></div>
+            <span>LLM :8080</span>
+        </div>
+        <div class="conn-badge">
+            <div class="conn-dot" id="ttsDot"></div>
+            <span>TTS :8000</span>
+        </div>
+    </div>
+</div>
+
+<div class="grid">
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Correct</div>
+            <div class="stat-value green" id="sCorrect">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Wrong</div>
+            <div class="stat-value red" id="sWrong">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Streak</div>
+            <div class="stat-value accent" id="sStreak">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Accuracy</div>
+            <div class="stat-value blue" id="sAccuracy">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Last Pipeline</div>
+            <div class="stat-value dim" id="sLatency">--</div>
+        </div>
+    </div>
+
+    <!-- Problem -->
+    <div class="panel problem-panel">
+        <div class="panel-head">
+            <span class="panel-title">Problem</span>
+            <span class="panel-title" id="qLabel">Q1</span>
+        </div>
+        <div class="panel-body">
+            <div class="category-row" id="catRow">
+                <button class="cat-btn on" data-c="addition">Add</button>
+                <button class="cat-btn" data-c="subtraction">Sub</button>
+                <button class="cat-btn" data-c="multiplication">Mul</button>
+                <button class="cat-btn" data-c="division">Div</button>
+                <button class="cat-btn" data-c="mixed">Mix</button>
+            </div>
+            <div class="diff-row" id="diffRow">
+                <button class="diff-btn on" data-d="easy">Easy</button>
+                <button class="diff-btn" data-d="medium">Med</button>
+                <button class="diff-btn" data-d="hard">Hard</button>
+            </div>
+            <div class="problem-display">
+                <div class="q-num" id="qNum">Question 1</div>
+                <div class="q-text" id="qText">3 + 4 = ?</div>
+                <div class="input-row">
+                    <input type="text" id="answerInput" placeholder="?" autocomplete="off">
+                    <button id="submitBtn">Check</button>
+                </div>
+                <div class="result-line" id="result"></div>
+                <div class="hint-line" id="hint"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="panel pipeline-panel">
+        <div class="panel-head">
+            <span class="panel-title">Pipeline</span>
+            <span class="panel-title" id="pipeStatus">idle</span>
+        </div>
+        <div class="panel-body">
+            <ul class="pipe-list">
+                <li class="pipe-item" id="pSTT">
+                    <div class="p-dot"></div>
+                    <div class="p-info">
+                        <div class="p-name">STT - Moonshine Tiny</div>
+                        <div class="p-detail" id="dSTT">Idle</div>
+                    </div>
+                    <div class="p-time" id="tSTT">--</div>
+                </li>
+                <li class="pipe-item" id="pCtx">
+                    <div class="p-dot"></div>
+                    <div class="p-info">
+                        <div class="p-name">Context Builder</div>
+                        <div class="p-detail" id="dCtx">Idle</div>
+                    </div>
+                    <div class="p-time" id="tCtx">--</div>
+                </li>
+                <li class="pipe-item" id="pLLM">
+                    <div class="p-dot"></div>
+                    <div class="p-info">
+                        <div class="p-name">LLM - Qwen 3.5-2B</div>
+                        <div class="p-detail" id="dLLM">Idle</div>
+                    </div>
+                    <div class="p-time" id="tLLM">--</div>
+                </li>
+                <li class="pipe-item" id="pTTS">
+                    <div class="p-dot"></div>
+                    <div class="p-info">
+                        <div class="p-name">TTS - Pocket-TTS</div>
+                        <div class="p-detail" id="dTTS">Idle</div>
+                    </div>
+                    <div class="p-time" id="tTTS">--</div>
+                </li>
+                <li class="pipe-item" id="pAudio">
+                    <div class="p-dot"></div>
+                    <div class="p-info">
+                        <div class="p-name">Audio Playback</div>
+                        <div class="p-detail" id="dAudio">Idle</div>
+                    </div>
+                    <div class="p-time" id="tAudio">--</div>
+                </li>
+            </ul>
+            <div class="reply-row" id="replyRow">
+                <div class="reply-tag">Tutor response</div>
+                <div class="reply-text" id="replyText"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log -->
+    <div class="panel log-panel">
+        <div class="panel-head">
+            <span class="panel-title">Log</span>
+            <span class="log-count" id="logCount">0 entries</span>
+        </div>
+        <div class="log-body" id="logBody">
+            <div class="l info"><span class="tag sys">SYS</span> Pipeline log initialized</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function(){
+    // --- State ---
+    let correct = 0, wrong = 0, streak = 0, qNum = 1;
+    let answer = 0, category = 'addition', difficulty = 'easy';
+    let llmOk = false, ttsOk = false;
+    let logEntries = 1;
+    let pipeStart = 0;
+    const timers = {};
+
+    const $ = id => document.getElementById(id);
+
+    // --- Logging ---
+    const tags = { stt:'STT', ctx:'CTX', llm:'LLM', tts:'TTS', audio:'AUDIO', sys:'SYS' };
+
+    function log(msg, type='info', stage='sys') {
+        const el = document.createElement('div');
+        el.className = `l ${type}`;
+        const t = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:3});
+        el.innerHTML = `${t} <span class="tag ${stage}">${tags[stage]||stage}</span> ${msg}`;
+        $('logBody').appendChild(el);
+        $('logBody').scrollTop = $('logBody').scrollHeight;
+        logEntries++;
+        $('logCount').textContent = `${logEntries} entries`;
+    }
+
+    // --- Pipeline ---
+    const stageMap = {STT:'stt',Ctx:'ctx',LLM:'llm',TTS:'tts',Audio:'audio'};
+
+    function pSet(s, state, detail) {
+        const el = $(`p${s}`);
+        if(!el) return;
+        el.className = `pipe-item ${state}`;
+        if(detail) $(`d${s}`).textContent = detail;
+        const ls = stageMap[s]||'sys';
+        if(state==='active') {
+            timers[s] = performance.now();
+            $(`t${s}`).textContent = '...';
+            log(`Started. ${detail||''}`, 'warn', ls);
+        } else if(state==='done' && timers[s]) {
+            const ms = Math.round(performance.now()-timers[s]);
+            $(`t${s}`).textContent = ms+'ms';
+            log(`Done in ${ms}ms. ${detail||''}`, 'ok', ls);
+        } else if(state==='done') {
+            log(`Done. ${detail||''}`, 'ok', ls);
+        } else if(state==='error') {
+            $(`t${s}`).textContent = 'ERR';
+            log(`FAILED: ${detail||''}`, 'err', ls);
+        }
+    }
+
+    function pReset() {
+        ['STT','Ctx','LLM','TTS','Audio'].forEach(s => {
+            $(`p${s}`).className = 'pipe-item';
+            $(`d${s}`).textContent = 'Idle';
+            $(`t${s}`).textContent = '--';
+        });
+        pipeStart = performance.now();
+        $('pipeStatus').textContent = 'running';
+        log('--- New pipeline run ---', 'info', 'sys');
+    }
+
+    // --- Problem generation ---
+    function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+    const R = {
+        easy:  {a:[1,10],s:[1,10],m:[1,5],d:[1,5]},
+        medium:{a:[10,50],s:[10,50],m:[2,10],d:[2,10]},
+        hard:  {a:[50,200],s:[20,100],m:[5,12],d:[3,12]}
+    };
+
+    function gen() {
+        let c = category;
+        if(c==='mixed') c = ['addition','subtraction','multiplication','division'][ri(0,3)];
+        const r = R[difficulty];
+        let a,b,op,ans;
+        switch(c){
+            case 'addition': a=ri(r.a[0],r.a[1]); b=ri(r.a[0],r.a[1]); op='+'; ans=a+b; break;
+            case 'subtraction': a=ri(r.s[0],r.s[1]); b=ri(r.s[0],Math.min(a,r.s[1])); op='-'; ans=a-b; break;
+            case 'multiplication': a=ri(r.m[0],r.m[1]); b=ri(r.m[0],r.m[1]); op='x'; ans=a*b; break;
+            case 'division': b=ri(r.d[0],r.d[1]); ans=ri(1,r.d[1]); a=b*ans; op='/'; break;
+        }
+        answer = ans;
+        $('qLabel').textContent = `Q${qNum}`;
+        $('qNum').textContent = `Question ${qNum}`;
+        $('qText').textContent = `${a} ${op} ${b} = ?`;
+        $('answerInput').value = '';
+        $('result').textContent = '';
+        $('result').className = 'result-line';
+        $('hint').textContent = '';
+        $('answerInput').focus();
+        log(`Problem: ${a} ${op} ${b} = ${ans} [${c}, ${difficulty}]`, 'info', 'sys');
+    }
+
+    // --- Check ---
+    function check() {
+        const v = $('answerInput').value.trim();
+        if(!v) return;
+        const n = parseInt(v,10);
+        if(isNaN(n)){ $('result').textContent='Enter a number'; $('result').className='result-line bad'; return; }
+
+        if(n===answer) {
+            correct++; streak++;
+            $('result').textContent = 'Correct';
+            $('result').className = 'result-line ok';
+            log(`Answer: ${n} -- Correct. Streak: ${streak}`, 'ok', 'sys');
+            sendToTutor(`The child answered ${answer} correctly. Streak is ${streak}. Say something encouraging, brief.`);
+        } else {
+            wrong++; streak=0;
+            $('result').textContent = `Wrong. Answer: ${answer}`;
+            $('result').className = 'result-line bad';
+            $('hint').textContent = getHint();
+            log(`Answer: ${n} -- Wrong (expected ${answer})`, 'err', 'sys');
+            sendToTutor(`The child answered ${n} but correct was ${answer}. Gently encourage.`);
+        }
+
+        $('sCorrect').textContent = correct;
+        $('sWrong').textContent = wrong;
+        $('sStreak').textContent = streak;
+        const total = correct + wrong;
+        $('sAccuracy').textContent = total ? Math.round((correct/total)*100)+'%' : '--';
+        qNum++;
+        setTimeout(gen, 1500);
+    }
+
+    function getHint() {
+        const t = $('qText').textContent;
+        if(t.includes('+')) return 'Count forward from the bigger number.';
+        if(t.includes('-')) return 'Count backward from the first number.';
+        if(t.includes('x')) return 'Multiply = add repeatedly.';
+        if(t.includes('/')) return 'How many groups can you make?';
+        return '';
+    }
+
+    // --- Tutor pipeline ---
+    async function sendToTutor(ctx) {
+        if(!llmOk) {
+            log('Pipeline skipped: LLM not connected.', 'warn', 'sys');
+            return;
+        }
+
+        pReset();
+
+        // STT
+        timers['STT'] = pipeStart;
+        pSet('STT', 'done', 'Browser input (no mic)');
+
+        // Context builder
+        pSet('Ctx', 'active', 'Building prompt...');
+        log(`State: cat=${category} diff=${difficulty} q=${qNum}`, 'info', 'ctx');
+        await sleep(30);
+        pSet('Ctx', 'done', `"${ctx.substring(0,60)}..."`);
+
+        // LLM
+        pSet('LLM', 'active', 'POST localhost:8080/v1/chat/completions');
+        log(`max_tokens=40, stream=false`, 'info', 'llm');
+
+        try {
+            const res = await fetch('http://localhost:8080/v1/chat/completions', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    messages:[
+                        {role:'system',content:'Brief kids tutor. 1-2 sentences max. No emojis.'},
+                        {role:'user',content:ctx}
+                    ], stream:false, max_tokens:40
+                })
+            });
+            if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            const d = await res.json();
+            const reply = d.choices[0].message.content;
+            const tok = d.usage ? d.usage.completion_tokens : '?';
+            pSet('LLM', 'done', `"${reply.substring(0,50)}"`);
+            log(`Tokens: ${tok}. "${reply}"`, 'ok', 'llm');
+
+            // Show reply
+            $('replyText').textContent = reply;
+            $('replyRow').classList.add('vis');
+            setTimeout(()=>$('replyRow').classList.remove('vis'), 8000);
+
+            // TTS
+            if(!ttsOk) {
+                log('TTS server not connected, skipping audio.', 'warn', 'tts');
+                $('pipeStatus').textContent = 'done (no tts)';
+                return;
+            }
+            pSet('TTS', 'active', `POST localhost:8000/generate (${reply.length} chars)`);
+            log(`Payload: "${reply}"`, 'info', 'tts');
+
+            const tr = await fetch('http://localhost:8000/generate', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({text:reply})
+            });
+
+            if(tr.ok) {
+                const blob = await tr.blob();
+                const kb = (blob.size/1024).toFixed(1);
+                const ct = tr.headers.get('content-type')||'?';
+                pSet('TTS', 'done', `${kb} KB (${ct})`);
+                log(`Audio: ${kb} KB, ${ct}`, 'ok', 'tts');
+
+                pSet('Audio', 'active', `Playing ${kb} KB...`);
+                const url = URL.createObjectURL(blob);
+                const au = new Audio(url);
+                au.play();
+                au.onended = () => {
+                    pSet('Audio', 'done', 'Complete');
+                    const total = Math.round(performance.now()-pipeStart);
+                    $('sLatency').textContent = total+'ms';
+                    $('pipeStatus').textContent = `done (${total}ms)`;
+                    log(`Playback done. Total: ${total}ms`, 'ok', 'audio');
+                    log(`--- Pipeline complete: ${total}ms ---`, 'ok', 'sys');
+                };
+                au.onerror = () => {
+                    pSet('Audio', 'error', 'Decode failed');
+                    $('pipeStatus').textContent = 'error';
+                };
+            } else {
+                const body = await tr.text().catch(()=>'');
+                pSet('TTS', 'error', `HTTP ${tr.status}`);
+                log(`${tr.status}: ${body.substring(0,80)}`, 'err', 'tts');
+                $('pipeStatus').textContent = 'error';
+            }
+        } catch(e) {
+            if($('pLLM').classList.contains('active')) {
+                pSet('LLM', 'error', e.message);
+            } else {
+                pSet('TTS', 'error', e.message);
+            }
+            $('pipeStatus').textContent = 'error';
+        }
+    }
+
+    function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+    // --- Connection check ---
+    async function checkConn() {
+        log('Checking LLM (localhost:8080)...', 'info', 'sys');
+        try {
+            const r = await fetch('http://localhost:8080/health');
+            if(r.ok) { llmOk=true; $('llmDot').classList.add('on'); log('LLM connected.','ok','llm'); }
+        } catch { log('LLM offline.','warn','llm'); }
+
+        log('Checking TTS (localhost:8000)...', 'info', 'sys');
+        try {
+            const r = await fetch('http://localhost:8000/');
+            if(r.ok || r.status < 500) { ttsOk=true; $('ttsDot').classList.add('on'); log(`TTS responded: ${r.status}`,'ok','tts'); }
+        } catch { log('TTS offline.','warn','tts'); }
+    }
+
+    // --- Events ---
+    $('submitBtn').addEventListener('click', check);
+    $('answerInput').addEventListener('keydown', e => { if(e.key==='Enter') check(); });
+
+    document.querySelectorAll('.cat-btn').forEach(b => {
+        b.addEventListener('click', () => {
+            document.querySelectorAll('.cat-btn').forEach(x=>x.classList.remove('on'));
+            b.classList.add('on');
+            category = b.dataset.c;
+            qNum = 1; gen();
+            log(`Category: ${category}`, 'info', 'sys');
+        });
+    });
+
+    document.querySelectorAll('.diff-btn').forEach(b => {
+        b.addEventListener('click', () => {
+            document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('on'));
+            b.classList.add('on');
+            difficulty = b.dataset.d;
+            qNum = 1; gen();
+            log(`Difficulty: ${difficulty}`, 'info', 'sys');
+        });
+    });
+
+    // --- Init ---
+    gen();
+    checkConn();
+})();
+</script>
+
+</body>
+</html>
