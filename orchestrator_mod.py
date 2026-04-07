@@ -5,7 +5,6 @@ import logging
 import queue
 import time
 import io
-import os
 
 import numpy as np
 import sounddevice as sd
@@ -20,20 +19,15 @@ import uvicorn
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger("orchestrator")
 
-# Ports Configuration
-TTS_PORT = os.environ.get("TTS_PORT", "8000")
-OLLAMA_PORT = os.environ.get("OLLAMA_PORT", "11434")
-ORCHESTRATOR_PORT = int(os.environ.get("ORCHESTRATOR_PORT", "8001"))
-
-# Pipeline Endpoints
-OLLAMA_SERVER = f"http://localhost:{OLLAMA_PORT}/v1/chat/completions"
-TTS_SERVER = f"http://localhost:{TTS_PORT}/tts"
+# Pipeline Configuration
+OLLAMA_SERVER = "http://localhost:11434/v1/chat/completions"
+TTS_SERVER = "http://localhost:8000/tts"
 
 # Audio Settings
 SAMPLE_RATE = 16000
 CHANNELS = 1
 SILENCE_THRESHOLD = 0.02   # Simple RMS amplitude threshold for VAD
-SILENCE_DURATION = 0.4     # Seconds of silence before finalizing speech chunk
+SILENCE_DURATION = 1.0     # Seconds of silence before finalizing speech chunk
 CHUNK_DURATION = 0.1       # Worker processing interval
 
 app = FastAPI()
@@ -47,8 +41,6 @@ app.add_middleware(
 
 connected_clients = []
 global_page_state = {"lesson": "Starting up", "status": "Ready"}
-chat_history = [{"role": "assistant", "content": "Hello! I am your Math Tutor. What is your name? Let's solve some math problems together!"}]
-is_tts_playing = False
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -62,12 +54,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 if msg.get('type') == 'page_state':
                     global global_page_state
                     global_page_state = msg.get('state')
-                elif msg.get('type') == 'user_chat':
-                    user_text = msg.get('text', '')
-                    sys_prompt = msg.get('system_prompt', None)
-                    if user_text:
-                        # process just like STT!
-                        asyncio.create_task(process_llm_and_speak(user_text, global_page_state, sys_prompt))
             except Exception:
                 pass
     except WebSocketDisconnect:
@@ -92,89 +78,40 @@ def audio_callback(indata, frames, time_info, status):
     """Callback for sounddevice InputStream to push mic data to the queue."""
     if status:
         logger.warning(f"Audio status: {status}")
-    
-    global is_tts_playing
-    if not is_tts_playing:
-        # Push a copy of the incoming audio to the queue only if STT is not speaking
-        audio_queue.put(indata.copy())
+    # Push a copy of the incoming audio to the queue
+    audio_queue.put(indata.copy())
 
-def build_prompt(transcript, page_state, system_prompt=None):
-    """Build the GPT-style message list for Qwen, including history."""
-    global chat_history
-    if len(chat_history) > 6:
-        chat_history = chat_history[-6:]
-        
-    if not system_prompt:
-        system_prompt = "You are a very encouraging math tutor for a child. Greet the child by their name if they just told you. Guide them to solve the problem step-by-step. Speak in brief, clear, natural sentences. Keep it very short!"
-        
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(chat_history)
-    messages.append({"role": "user", "content": f"The child said: {transcript}\nCurrent math problem on screen: {page_state}"})
-    
-    # Store just the transcript in history (without the hidden page_state boilerplate)
-    chat_history.append({"role": "user", "content": transcript})
-    return messages
-
-
-tts_text_queue = asyncio.Queue()
-audio_playback_queue = asyncio.Queue()
-
-async def audio_playback_worker():
-    global is_tts_playing
-    while True:
-        data, samplerate = await audio_playback_queue.get()
-        is_tts_playing = True
-        
-        # Clear microphone queue to prevent hearing itself
-        while not audio_queue.empty():
-            try:
-                audio_queue.get_nowait()
-            except queue.Empty:
-                break
-                
-        def _play():
-            import time
-            sd.play(data, samplerate)
-            sd.wait()
-            time.sleep(0.3)
-            
-        await asyncio.to_thread(_play)
-        
-        is_tts_playing = False
-        while not audio_queue.empty():
-            try:
-                audio_queue.get_nowait()
-            except queue.Empty:
-                break
-                
-        audio_playback_queue.task_done()
-
-async def tts_fetch_worker():
-    while True:
-        text = await tts_text_queue.get()
-        logger.info(f"[TTS Worker] Fetching audio for: '{text}'")
-        try:
-            async with httpx.AsyncClient() as client:
-                r = await client.post(TTS_SERVER, data={"text": text}, timeout=15.0)
-                if r.status_code == 200:
-                    audio_bytes = r.content
-                    with io.BytesIO(audio_bytes) as f:
-                        data, samplerate = sf.read(f)
-                    await audio_playback_queue.put((data, samplerate))
-                else:
-                    logger.error(f"[TTS] Error from TTS server: {r.status_code}")
-        except Exception as e:
-            logger.error(f"[TTS Worker] Communication exception: {e}")
-        tts_text_queue.task_done()
+def build_prompt(transcript, page_state):
+    """Build the GPT-style message list for Qwen."""
+    return [
+        {"role": "system", "content": "You are a helpful and very concise tutor for a child. Speak in brief, clear, natural sentences. Keep it short!"},
+        {"role": "user", "content": f"The child said: {transcript}\nCurrent lesson context: {page_state}"}
+    ]
 
 async def speak(text: str):
-    """Queues text to be processed by the TTS worker."""
-    await tts_text_queue.put(text)
+    """Hits the TTS microservice and plays the output audio bytes directly."""
+    logger.info(f"[TTS] Generating audio for: '{text}'")
+    try:
+        async with httpx.AsyncClient() as client:
+            # We hit the local pocket-tts server
+            r = await client.post(TTS_SERVER, data={"text": text}, timeout=10.0)
+            if r.status_code == 200:
+                audio_bytes = r.content
+                # Parse audio bytes (typically WAV) and play
+                with io.BytesIO(audio_bytes) as f:
+                    data, samplerate = sf.read(f)
+                
+                # Play natively, blocks execution natively (which is fine locally as it enforces natural timing, but it runs in an asyncio task anyway)
+                sd.play(data, samplerate)
+                sd.wait() # wait until playback is finished
+            else:
+                logger.error(f"[TTS] Error from TTS server: {r.status_code} - {r.text}")
+    except Exception as e:
+        logger.error(f"[TTS] Communication exception calling TTS: {e}")
 
-
-async def process_llm_and_speak(transcript: str, page_state: dict, system_prompt: str = None):
+async def process_llm_and_speak(transcript: str, page_state: dict):
     """Queries the LLM with streaming, chunking by sentence, and dispatches to TTS immediately."""
-    prompt = build_prompt(transcript, page_state, system_prompt)
+    prompt = build_prompt(transcript, page_state)
     logger.info(f"[LLM] Prompting LLM with transcript: '{transcript}'")
     
     sentence_buffer = ""
@@ -201,9 +138,9 @@ async def process_llm_and_speak(transcript: str, page_state: dict, system_prompt
                                 print(token, end='', flush=True)
                                 
                                 # Trick: sentence-level streaming
-                                if token.endswith((".", "?", "!", ",")) or "\n" in token:
+                                if token.endswith((".", "?", "!")) or "\n" in token:
                                     sentence_to_speak = sentence_buffer.strip()
-                                    if len(sentence_to_speak) > 2: # ensure it's not generating empty/tiny strings
+                                    if sentence_to_speak:
                                         # Kick off speaking task without awaiting, allowing stream to continue
                                         asyncio.create_task(speak(sentence_to_speak))
                                     sentence_buffer = ""
@@ -218,7 +155,6 @@ async def process_llm_and_speak(transcript: str, page_state: dict, system_prompt
              
         # Broadcast full reply to dashboard
         if full_reply.strip():
-            chat_history.append({"role": "assistant", "content": full_reply.strip()})
             asyncio.create_task(broadcast({"type": "tutor_reply", "text": full_reply.strip()}))
 
     except Exception as e:
@@ -251,6 +187,11 @@ def run_stt_inference(audio_data):
     except Exception as e:
         logger.error(f"STT inference failed: {e}")
         return ""
+
+async def start_server():
+    config = uvicorn.Config(app, host="127.0.0.1", port=8001, log_level="error")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 async def audio_loop():
     logger.info("Starting audio capture and VAD loop...")
@@ -289,13 +230,6 @@ async def audio_loop():
                                 audio_data = np.concatenate(buffer, axis=0).flatten()
                                 transcript = await loop.run_in_executor(None, run_stt_inference, audio_data)
                                 transcript = transcript.strip() if transcript else ""
-                                
-                                # Ignore tiny noises, static hallucinations, or single punctuation
-                                ignore_list = ["1", ".", ",", "!", "?", "", "And?", "Right.", "Right?", "What would you like to put?", "Okay", "Okay."]
-                                if transcript in ignore_list or len(transcript) <= 2:
-                                    logger.info(f"[STT Result]: Ignored as static noise '{transcript}'")
-                                    transcript = ""
-                                    
                                 if transcript:
                                     logger.info(f"[STT Result]: {transcript}")
                                     asyncio.create_task(broadcast({"type": "stt_result", "text": transcript}))
@@ -304,19 +238,14 @@ async def audio_loop():
                                     logger.info("[STT Result]: <Nothing coherent transcribed>")
                             buffer = []
 
-@app.on_event("startup")
-async def startup_event():
-    async def delayed_greeting():
-        await asyncio.sleep(4) # Give TTS server time to fully start
-        await speak("Hello! I am your Math Tutor. What is your name? Let's solve some math problems together!")
-        
-    asyncio.create_task(audio_playback_worker())
-    asyncio.create_task(tts_fetch_worker())
-    asyncio.create_task(audio_loop())
-    asyncio.create_task(delayed_greeting())
+async def main():
+    await asyncio.gather(
+        audio_loop(),
+        start_server()
+    )
 
 if __name__ == "__main__":
     try:
-        uvicorn.run("orchestrator:app", host="127.0.0.1", port=ORCHESTRATOR_PORT, log_level="error")
+        asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Shutting down orchestrator.")

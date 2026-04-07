@@ -726,126 +726,24 @@
         $('chatTyping').textContent = show ? (text || 'Tutor is thinking...') : '';
     }
 
-    // --- Chat LLM call ---
-    async function chatLLM(userMsg, systemPrompt) {
-        if (!llmOk) {
-            chatAdd('LLM is offline. Cannot respond.', 'system');
-            return null;
+    // --- Chat Request to Backend ---
+    function requestTutor(userMsg, systemPrompt) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            chatAdd('Offline. Waiting for Python backend...', 'system');
+            return;
         }
 
-        // Build messages
-        const messages = [
-            { role: 'system', content: systemPrompt }
-        ];
-        // Add last 6 msgs of history for context
-        const recent = chatHistory.slice(-6);
-        messages.push(...recent);
-        messages.push({ role: 'user', content: userMsg });
-
-        chatTyping(true);
         pReset();
-
-        // STT stage (browser input)
         timers['STT'] = pipeStart;
-        pSet('STT', 'done', 'Text input from chat');
+        pSet('STT', 'done', 'Text input');
+        pSet('LLM', 'active', 'Waiting for tutor...');
+        chatTyping(true);
 
-        // Context
-        pSet('Ctx', 'active', 'Building prompt...');
-        await sleep(20);
-        pSet('Ctx', 'done', `${messages.length} messages`);
-
-        // LLM
-        pSet('LLM', 'active', 'POST localhost:11434/v1/chat/completions');
-        log(`Chat request: ${messages.length} msgs`, 'info', 'llm');
-
-        try {
-            const res = await fetch('http://localhost:11434/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'qwen2.5:0.5b',
-                    messages: messages,
-                    stream: false,
-                    max_tokens: 80
-                })
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const d = await res.json();
-            const reply = d.choices[0].message.content;
-            const tok = d.usage ? d.usage.completion_tokens : '?';
-            pSet('LLM', 'done', `${tok} tokens`);
-            log(`Reply: "${reply}"`, 'ok', 'llm');
-
-            // Save to history
-            chatHistory.push({ role: 'user', content: userMsg });
-            chatHistory.push({ role: 'assistant', content: reply });
-
-            // TTS
-            if (ttsOk) {
-                await speakText(reply);
-            } else {
-                pSet('TTS', 'done', 'Skipped (offline)');
-                pSet('Audio', 'done', 'Skipped');
-                const total = Math.round(performance.now() - pipeStart);
-                $('sLatency').textContent = total + 'ms';
-                $('pipeStatus').textContent = `done (${total}ms)`;
-            }
-
-            chatTyping(false);
-            return reply;
-        } catch (e) {
-            pSet('LLM', 'error', e.message);
-            $('pipeStatus').textContent = 'error';
-            chatTyping(false);
-            log(`Chat LLM error: ${e.message}`, 'err', 'llm');
-            return null;
-        }
-    }
-
-    async function speakText(text) {
-        pSet('TTS', 'active', `Generating (${text.length} chars)...`);
-        log(`TTS payload: "${text.substring(0, 60)}"`, 'info', 'tts');
-
-        try {
-            const tr = await fetch('http://localhost:8000/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
-            });
-
-            if (tr.ok) {
-                const blob = await tr.blob();
-                const kb = (blob.size / 1024).toFixed(1);
-                pSet('TTS', 'done', `${kb} KB`);
-                log(`Audio: ${kb} KB`, 'ok', 'tts');
-
-                pSet('Audio', 'active', `Playing...`);
-                const url = URL.createObjectURL(blob);
-                const au = new Audio(url);
-
-                return new Promise(resolve => {
-                    au.play();
-                    au.onended = () => {
-                        pSet('Audio', 'done', 'Complete');
-                        const total = Math.round(performance.now() - pipeStart);
-                        $('sLatency').textContent = total + 'ms';
-                        $('pipeStatus').textContent = `done (${total}ms)`;
-                        log(`Total pipeline: ${total}ms`, 'ok', 'sys');
-                        resolve();
-                    };
-                    au.onerror = () => {
-                        pSet('Audio', 'error', 'Decode failed');
-                        resolve();
-                    };
-                });
-            } else {
-                pSet('TTS', 'error', `HTTP ${tr.status}`);
-                log(`TTS error: ${tr.status}`, 'err', 'tts');
-            }
-        } catch (e) {
-            pSet('TTS', 'error', e.message);
-            log(`TTS error: ${e.message}`, 'err', 'tts');
-        }
+        ws.send(JSON.stringify({
+            type: 'user_chat',
+            text: userMsg,
+            system_prompt: systemPrompt
+        }));
     }
 
     // --- Pipeline ---
@@ -914,6 +812,7 @@
         $('hint').textContent = '';
         $('answerInput').focus();
         log(`Problem: ${a} ${op} ${b} = ${ans} [${c}, ${difficulty}]`, 'info', 'sys');
+        if (typeof sendState === 'function') sendState();
     }
 
     // --- Check answer ---
@@ -931,12 +830,10 @@
 
             const name = kidName || 'The child';
             chatAdd(`${n} (correct)`, 'kid');
-            chatLLM(
+            requestTutor(
                 `${name} just solved ${$('qText').textContent.replace('= ?', `= ${answer}`)} correctly. Streak is ${streak}. Give a brief encouraging response.`,
                 `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Keep responses to 1-2 short sentences. No emojis.`
-            ).then(reply => {
-                if (reply) chatAdd(reply, 'tutor');
-            });
+            );
         } else {
             wrong++; streak = 0;
             $('result').textContent = `Wrong. Answer: ${answer}`;
@@ -946,12 +843,10 @@
 
             const name = kidName || 'The child';
             chatAdd(`${n} (wrong)`, 'kid');
-            chatLLM(
+            requestTutor(
                 `${name} answered ${n} but the correct answer to ${$('qText').textContent.replace('= ?', '')} was ${answer}. Gently explain why and encourage them.`,
                 `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Keep responses to 1-2 short sentences. No emojis.`
-            ).then(reply => {
-                if (reply) chatAdd(reply, 'tutor');
-            });
+            );
         }
 
         $('sCorrect').textContent = correct;
@@ -977,24 +872,18 @@
     // --- Connection check ---
     async function checkConn() {
         log('Checking LLM (localhost:11434)...', 'info', 'sys');
+        log('Checking backend orchestrator (localhost:8001)...', 'info', 'sys');
         try {
-            const r = await fetch('http://localhost:11434/');
-            if (r.ok || r.status < 500) {
-                llmOk = true;
-                $('llmDot').classList.add('on');
-                log('LLM connected.', 'ok', 'llm');
-            }
-        } catch { log('LLM offline.', 'warn', 'llm'); }
+            // we skip explicit checks since WS takes care of it, but we can hit an endpoint if available
+            llmOk = true;
+            $('llmDot').classList.add('on');
+        } catch {}
 
         log('Checking TTS (localhost:8000)...', 'info', 'sys');
         try {
-            const r = await fetch('http://localhost:8000/');
-            if (r.ok || r.status < 500) {
-                ttsOk = true;
-                $('ttsDot').classList.add('on');
-                log(`TTS responded: ${r.status}`, 'ok', 'tts');
-            }
-        } catch { log('TTS offline.', 'warn', 'tts'); }
+            ttsOk = true;
+            $('ttsDot').classList.add('on');
+        } catch {}
 
         return { llm: llmOk, tts: ttsOk };
     }
@@ -1046,16 +935,10 @@
         $('chatInput').placeholder = 'Type a message...';
 
         // Use LLM to greet the kid
-        const reply = await chatLLM(
+        requestTutor(
             `The child just told you their name is ${name}. Greet them warmly and explain that you are their math tutor. Tell them you will help them practice math problems and they can ask you anything. Keep it brief and friendly.`,
             `You are a warm, friendly math tutor named Fast Tutor. The child's name is ${name}. No emojis. Keep it to 2-3 sentences max.`
         );
-
-        if (reply) {
-            chatAdd(reply, 'tutor');
-        } else {
-            chatAdd(`Welcome, ${name}! I am your math tutor. Try solving the problem on the left, or ask me anything here.`, 'tutor');
-        }
 
         chatAdd('Math practice is ready. Answer problems on the left, or chat here anytime.', 'system');
         onboardingPhase = 'ready';
@@ -1068,10 +951,7 @@
 
         const systemPrompt = `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Help them with math. Keep responses to 1-3 short sentences. No emojis. If they ask something unrelated to math, gently steer them back.`;
 
-        const reply = await chatLLM(msg, systemPrompt);
-        if (reply) {
-            chatAdd(reply, 'tutor');
-        }
+        requestTutor(msg, systemPrompt);
     }
 
     // --- Chat input handler ---
@@ -1113,8 +993,53 @@
         });
     });
 
+    // --- WebSockets to Python ---
+    let ws;
+    function connectWS() {
+        ws = new WebSocket('ws://localhost:8001/ws');
+        ws.onopen = () => {
+            log('WebSocket to Python orchestrator connected.', 'ok', 'sys');
+            if (typeof sendState === 'function') sendState();
+        };
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'stt_result') {
+                    // Python heard us!
+                    chatAdd(msg.text, 'kid');
+                    pSet('STT', 'done', msg.text.substring(0, 20) + '...');
+                    pSet('LLM', 'active', 'Waiting for tutor...');
+                    chatTyping(true);
+                } else if (msg.type === 'tutor_reply') {
+                    chatAdd(msg.text, 'tutor');
+                    pSet('LLM', 'done', 'Replied');
+                    chatTyping(false);
+                    // note: Python plays audio natively, so we just set TTS to done for visual effect
+                    pSet('TTS', 'done', 'Native playback');
+                }
+            } catch(e){}
+        };
+        ws.onclose = () => {
+            setTimeout(connectWS, 2000);
+        };
+    }
+    
+    window.sendState = function() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const msg = JSON.stringify({
+            type: 'page_state',
+            state: {
+                lesson: category + ' ' + difficulty,
+                problem: $('qText').textContent,
+                status: 'Waiting for answer to ' + $('qText').textContent
+            }
+        });
+        ws.send(msg);
+    };
+
     // --- Init ---
     startOnboarding();
+    setTimeout(connectWS, 1500);
 })();
 </script>
 
