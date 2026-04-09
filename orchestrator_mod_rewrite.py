@@ -1,4 +1,10 @@
-import asyncio
+import re
+
+with open("orchestrator_mod.py", "r") as f:
+    content = f.read()
+
+# We will completely overwrite orchestrator_mod.py using the advanced Unmute architecture concept:
+new_code = """import asyncio
 import httpx
 import json
 import logging
@@ -117,14 +123,14 @@ def interrupt_bot():
         state.conversation_state = "waiting_for_user"
 
 def build_prompt(transcript, page_state):
-    """Advanced Unmute-like system prompt"""
-    system_prompt = """You are an interactive, extremely concise and encouraging math tutor for a child.
+    \"\"\"Advanced Unmute-like system prompt\"\"\"
+    system_prompt = \"\"\"You are an interactive, extremely concise and encouraging math tutor for a child.
 RULES:
 1. Speak in brief, natural sentences.
 2. Stop at 1 or 2 sentences max.
 3. Be conversational.
 4. Current Screen/Math problem Context: {page_context}
-""".format(page_context=json.dumps(page_state))
+\"\"\".format(page_context=json.dumps(page_state))
 
     messages = [{"role": "system", "content": system_prompt}]
     
@@ -207,7 +213,7 @@ async def process_llm_task(transcript: str, page_state: dict):
                                 full_reply += token
                                 print(token, end='', flush=True)
                                 
-                                if token.endswith((".", "?", "!", ",")) or "\n" in token:
+                                if token.endswith((".", "?", "!", ",")) or "\\n" in token:
                                     s = sentence_buffer.strip()
                                     if len(s) > 2:
                                         await state.tts_text_queue.put(s)
@@ -317,3 +323,8 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Shutting down orchestrator.")
+"""
+
+with open("orchestrator_mod.py", "w") as f:
+    f.write(new_code)
+print("Updated orchestrator_mod.py to match Unmute architecture.")
