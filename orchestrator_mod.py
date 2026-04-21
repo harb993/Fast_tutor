@@ -79,7 +79,7 @@ async def broadcast(message: dict):
             pass
 
 logger.info("Initializing Moonshine STT model...")
-stt = MoonshineOnnxModel(model_name="moonshine/tiny")
+stt = MoonshineOnnxModel(model_name="moonshine/base")
 tokenizer = load_tokenizer()
 logger.info("Moonshine STT model loaded successfully.")
 
