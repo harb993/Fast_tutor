@@ -197,3 +197,12 @@ If the goal is to build a **Local, Math-Focused AI Tutor**:
 1. **Our System vs. Moshi:** Moshi provides an incredible acoustic experience but is too resource-hungry and its raw acoustic hallucination makes it hard to restrict logically. Our System (Fast Tutor) gives us tight logical control, strict math rule enforcement via system prompting, and runs on a fraction of the hardware budget.
 2. **Our System vs. Ultravox:** Ultravox is an incredible middle-ground (skipping STT), but still requires heavy GPU hardware (+16GB VRAM) for local deployment. Fast Tutor's Moonshine STT + Qwen2.5 combo is vastly more adaptable for lower-end offline laptops.
 3. **Our System vs. Unmute:** Fast Tutor *is* an Unmute-style architectural clone adapted strictly for offline execution and educational moderation. It proves that a properly orchestrated, streaming cascaded pipeline with Semantic VAD logic is currently the most practical, customizable, and reliable way to build specialized voice applications.
+
+---
+
+## 5. Fast Tutor — Production Evaluation Metrics
+
+> The full evaluation framework (Precision@K, Recall@K, MRR, NDCG, Hit Rate, Context Relevance, WER, MOS, E2E Latency and more) is documented in the dedicated file:
+>
+> 📄 **[evaluation_metrics.md](./evaluation_metrics.md)**
+
