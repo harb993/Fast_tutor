@@ -38,12 +38,15 @@ graph TD
     TTS -- "🎵 Synthesized Voice" --> Speaker
 ```
 
-* **Architecture:** Offline, Event-Driven Cascaded Pipeline.
+* **Architecture:** Offline, Event-Driven Cascaded Pipeline (Unmute-inspired).
 * **Component Flow:** 
-  * **STT:** Moonshine (highly optimized, low-footprint speech-to-text).
-  * **LLM Engine:** Local Python Orchestrator routing to a lightweight local LLM (e.g., via Ollama). Employs strict prompt engineering for math-focussed, concise answers.
-  * **TTS:** Localized TTS (e.g., Kokoro-TTS).
-* **System Design:** Held together by a Python WebSocket orchestrator that talks directly to an interactive HTML/JS front-end. It emphasizes total offline capability, modularity, and tight control over the conversation flow without relying on third-party API networks.
+  * **STT:** Moonshine Tiny (highly optimized, local speech-to-text with low GPU footprint).
+  * **LLM Engine:** Ollama running `qwen2.5:0.5b` (extremely lightweight 0.5B text model) for incredibly fast text generation.
+  * **TTS:** Localized TTS (Kokoro-TTS via Pocket-TTS).
+* **System Design:** Held together by a Python WebSocket orchestrator that mirrors Unmute's architecture but runs entirely offline. It features:
+  - **Heuristic Semantic VAD:** Predicts utterance completion based on punctuation, trailing conjunctions, and sentence length to minimize silence gaps.
+  - **Smart Interruptions:** Uses RMS thresholds to allow the user to interrupt the bot gracefully after an initial 3-second uninterruptible grace period.
+  - **Conversation FSM:** Centralized state tracking (`waiting_for_user`, `user_speaking`, `bot_speaking`) with long-silence nudges.
 
 ### Moshi (by Kyutai)
 
@@ -148,13 +151,13 @@ graph TD
 
 | System | Primary Resource Constraint | VRAM/Memory Footprint | Deployment Scope |
 | :--- | :--- | :--- | :--- |
-| **Our System** | Highly Scalable / Modular | **Very Low to Modest (2GB - 8GB)** | Runs efficiently on low-end consumer hardware (laptops, Apple Silicon, older GPUs), or mostly CPU. Depends heavily on the chosen local text LLM. |
+| **Our System** | Highly Scalable / Modular | **Ultra-Low (< 4GB VRAM)** | By using Moonshine Tiny and Qwen2.5 (0.5B parameters), it runs effortlessly on basic consumer hardware and Apple Silicon CPUs without crashing. |
 | **Moshi** | Heavy GPU Requirement | **High (~8GB - 16GB+ VRAM)** | As a 7B parameter multimodal model, it requires a dedicated AI accelerator / heavy GPU to run inference locally at real-time speeds. |
 | **Ultravox** | Moderate-to-Heavy GPU | **High (~16GB VRAM)** | Usually built on top of 8B Llama-3 models. Requires substantial memory just to load the LLM and the attached audio encoder. |
 | **Unmute** | Modular (Depends on models) | **Variable** | Since it acts as a wrapper, it can be lightweight if calling API endpoints, or highly resource-intensive if running its STT, LLM, and TTS fully locally simultaneously. |
 
 **Summary:** 
-Our System wins on minimum viable footprint. By leveraging Moonshine STT and lightweight routing, we can run completely offline on modest hardware where Moshi or Ultravox would fundamentally crash or fail to achieve real-time streaming speeds.
+Our System overwhelmingly wins on minimum viable footprint. By intentionally down-scaling to Qwen2.5-0.5B and Moonshine, Fast Tutor achieves near real-time voice streaming on hardware where Moshi or Ultravox would fundamentally OOM (Out-of-Memory) or fail to achieve real-time streaming speeds.
 
 ---
 
@@ -163,9 +166,9 @@ Our System wins on minimum viable footprint. By leveraging Moonshine STT and lig
 Latency in voice AI includes Time-To-First-Byte (TTFB) and full dialogue turnaround time.
 
 1. **Moshi (Fastest):** Operates under **~200ms latency**. Because it is a native Speech-to-Speech model, it requires zero time for text transduction. It begins generating audio responses virtually instantly, rivaling human reflex time.
-2. **Our System (Highly Competitive):** Optimized for **~400ms - 800ms**. While a cascaded system inherently faces "pipeline tax", our use of streaming Moonshine STT buffers and WebSocket chunking minimizes idle time. It generates text and triggers the TTS stream much faster than standard cascade. 
+2. **Our System (High Velocity Cascade):** Optimized for **fast turnaround (~400ms - 800ms)**. While fundamentally a pipeline, Fast Tutor actively mitigates the "pipeline tax" using its Heuristic Semantic VAD (cutting off STT early when a sentence seems complete) and aggressive LLM sentence-chunking (submitting incomplete text buffers to Kokoro TTS before the LLM finishes). This puts its TTFB exceptionally close to native models.
 3. **Ultravox (Fast):** By omitting the STT transcription step, it saves roughly 300ms associated with traditional ASR. However, it still must stream its text generation into a TTS engine. Latency is generally around **~500ms - 700ms**.
-4. **Unmute (Fast for Cascade):** Minimizes latency purely through "Semantic VAD" (predicting when a user intends to stop speaking rather than waiting for silence). Typically clocks in around **~600ms - 1000ms** depending on the backbone LLM speed.
+4. **Unmute (Baseline for Fast Tutor):** Fast Tutor is essentially a localized implementation of Unmute's theories. Both systems minimize latency purely through advanced VAD and parallel execution of STT/LLM/TTS, clocking in around **~600ms - 1000ms** depending on hardware.
 
 ---
 
@@ -189,6 +192,8 @@ Different architectures handle audio nuances, reasoning, and context differently
 
 If the goal is to build a **Local, Math-Focused AI Tutor**:
 
-1. **Our System vs. Moshi:** Moshi provides an incredible conversational experience but is too resource-hungry and hard to restrict behaviorally (preventing it from answering off-topic). Our System gives us tight logical control, strict rule enforcement, and a footprint small enough for consumer devices. 
-2. **Our System vs. Ultravox:** Ultravox is an incredible middle-ground (skipping STT), but still requires heavy GPU hardware (16GB VRAM) for local deployment. Fast Tutor's Moonshine STT is more adaptable for lower-end offline laptops.
-3. **Our System vs. Unmute:** Unmute validates our design pattern. Both Fast Tutor and Unmute prove that properly orchestrated, streaming cascaded pipelines (STT -> LLM -> TTS) are currently the most practical, customizable, and reliable way to build specialized voice applications. Our system has the added benefit of being custom-tailored to our exact WebUI and strict educational guardrails.
+If the goal is to build a **Local, Math-Focused AI Tutor**:
+
+1. **Our System vs. Moshi:** Moshi provides an incredible acoustic experience but is too resource-hungry and its raw acoustic hallucination makes it hard to restrict logically. Our System (Fast Tutor) gives us tight logical control, strict math rule enforcement via system prompting, and runs on a fraction of the hardware budget.
+2. **Our System vs. Ultravox:** Ultravox is an incredible middle-ground (skipping STT), but still requires heavy GPU hardware (+16GB VRAM) for local deployment. Fast Tutor's Moonshine STT + Qwen2.5 combo is vastly more adaptable for lower-end offline laptops.
+3. **Our System vs. Unmute:** Fast Tutor *is* an Unmute-style architectural clone adapted strictly for offline execution and educational moderation. It proves that a properly orchestrated, streaming cascaded pipeline with Semantic VAD logic is currently the most practical, customizable, and reliable way to build specialized voice applications.
